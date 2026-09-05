@@ -65,10 +65,11 @@ namespace Pythime
             var story = FindFirstObjectByType<StoryDirector>();
             var dialogueOpen = story != null && story.DialogueOpen;
 
-            GUI.Box(new Rect(18, 18, 288, 106), GUIContent.none, panelStyle);
+            GUI.Box(new Rect(18, 18, 310, 122), GUIContent.none, panelStyle);
             GUI.Label(new Rect(34, 28, 150, 30), "PYTHIME", titleStyle);
-            GUI.Box(new Rect(207, 27, 80, 30), timeline.CurrentYear.ToString(), yearStyle);
-            GUI.Label(new Rect(34, 62, 245, 48), "WASD mover  •  Q/E tempo\nP PyTerminal  •  C roupa  •  H cabelo", bodyStyle);
+            GUI.Box(new Rect(227, 27, 82, 30), timeline.CurrentYear.ToString(), yearStyle);
+            GUI.Label(new Rect(34, 62, 270, 62),
+                "WASD mover  •  Q/E tempo  •  TAB personagem\nP PyTerminal  •  F interagir\nESC pula diálogo  •  Espaço/Enter avança", bodyStyle);
 
             if (!dialogueOpen && timeline.CurrentYear == 1956 && !timeline.SeedPlanted)
             {
