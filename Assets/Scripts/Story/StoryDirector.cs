@@ -58,12 +58,15 @@ namespace Pythime
             if (player == null || TimeTravelManager.Instance == null) return;
 
             UpdateLocationName();
-
             var keyboard = Keyboard.current;
+
             if (dialogueOpen)
             {
-                if (keyboard != null && (keyboard.spaceKey.wasPressedThisFrame || keyboard.enterKey.wasPressedThisFrame))
+                if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame)
+                    SkipDialogue();
+                else if (keyboard != null && (keyboard.xKey.wasPressedThisFrame || keyboard.spaceKey.wasPressedThisFrame || keyboard.enterKey.wasPressedThisFrame))
                     AdvanceDialogue();
+                return;
             }
 
             var timeline = TimeTravelManager.Instance;
@@ -157,7 +160,17 @@ namespace Pythime
         {
             dialogueIndex++;
             if (dialogueIndex < dialogueLines.Length) return;
+            FinishDialogue();
+        }
 
+        public void SkipDialogue()
+        {
+            if (!dialogueOpen) return;
+            FinishDialogue();
+        }
+
+        private void FinishDialogue()
+        {
             dialogueOpen = false;
             dialogueLines = Array.Empty<string>();
             dialogueIndex = 0;
@@ -243,7 +256,7 @@ namespace Pythime
             GUI.Box(new Rect(60, y, Screen.width - 120, boxHeight), string.Empty);
             GUI.Label(new Rect(86, y + 18, 180, 28), speaker, dialogueNameStyle);
             GUI.Label(new Rect(86, y + 50, Screen.width - 172, 64), text, dialogueStyle);
-            GUI.Label(new Rect(Screen.width - 360, y + 116, 270, 24), "WASD move  •  ESPAÇO / ENTER continua", objectiveTitleStyle);
+            GUI.Label(new Rect(Screen.width - 470, y + 116, 380, 24), "ESPAÇO/ENTER/X continua   •   ESC pula a conversa", objectiveTitleStyle);
         }
     }
 }
