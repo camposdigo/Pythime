@@ -16,16 +16,20 @@ namespace Pythime
 
         private IEnumerator Start()
         {
+            GameObject runtime = null;
             for (var i = 0; i < 30; i++)
             {
-                if (GameObject.Find("Era_2026") != null) break;
+                runtime = GameObject.Find("PythimeRuntime");
+                if (runtime != null) break;
                 yield return null;
             }
 
+            if (runtime == null) yield break;
+
             AddPlayerSorting();
-            BuildEra(1956);
-            BuildEra(2026);
-            BuildEra(2096);
+            BuildEra(runtime.transform, 1956);
+            BuildEra(runtime.transform, 2026);
+            BuildEra(runtime.transform, 2096);
         }
 
         private static void AddPlayerSorting()
@@ -41,13 +45,13 @@ namespace Pythime
             }
         }
 
-        private static void BuildEra(int year)
+        private static void BuildEra(Transform runtime, int year)
         {
-            var era = GameObject.Find($"Era_{year}");
-            if (era == null || era.transform.Find("DepthProps") != null) return;
+            var era = runtime.Find($"Era_{year}");
+            if (era == null || era.Find("DepthProps") != null) return;
 
             var root = new GameObject("DepthProps");
-            root.transform.SetParent(era.transform);
+            root.transform.SetParent(era);
 
             var treePoints = new[]
             {
