@@ -19,5 +19,8 @@
 *.opendb
 *.VC.db
 
+Assets/Resources/PythimeArt/KenneyRPGUrban/
+Assets/Resources/PythimeArt/KenneyRPGUrban.meta
+
 .DS_Store
 Thumbs.db
