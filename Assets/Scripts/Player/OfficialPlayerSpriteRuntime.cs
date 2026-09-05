@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 
 namespace Pythime
@@ -8,9 +9,10 @@ namespace Pythime
     public sealed class OfficialPlayerSpriteRuntime : MonoBehaviour
     {
         private const string ResourcePath = "Characters/player_marty_sheet";
+        private const string DiskRelativePath = "Resources/Characters/player_marty_sheet.png";
         private const int Columns = 4;
         private const int Rows = 5;
-        private const float PixelsPerUnit = 20f;
+        private const float PixelsPerUnit = 18f;
         private const float FrameDuration = 0.115f;
 
         private readonly Dictionary<string, Sprite> frames = new Dictionary<string, Sprite>();
@@ -59,23 +61,23 @@ namespace Pythime
                 yield break;
             }
 
-            var source = LoadSource();
-            if (!source.IsValid)
+            var texture = LoadPlayerTexture();
+            if (texture == null)
             {
-                Debug.LogWarning("Pythime: player_marty_sheet.png não encontrado. Caminho esperado: Assets/Resources/Characters/player_marty_sheet.png");
+                Debug.LogWarning("Pythime: player_marty_sheet.png não carregou. Use exatamente Assets/Resources/Characters/player_marty_sheet.png");
                 Destroy(gameObject);
                 yield break;
             }
 
-            source.Texture.filterMode = FilterMode.Point;
-            source.Texture.wrapMode = TextureWrapMode.Clamp;
+            texture.filterMode = FilterMode.Point;
+            texture.wrapMode = TextureWrapMode.Clamp;
 
-            BuildFrames(source);
-            usingOfficialSheet = frames.Count == 20;
+            BuildFrames(texture);
+            usingOfficialSheet = frames.Count == Columns * Rows;
 
             if (!usingOfficialSheet)
             {
-                Debug.LogWarning("Pythime: player_marty_sheet.png foi encontrado, mas não consegui montar os 20 frames. Mantendo fallback temporário.");
+                Debug.LogWarning($"Pythime: spritesheet carregou, mas os frames não foram criados. Tamanho: {texture.width}x{texture.height}");
                 Destroy(gameObject);
                 yield break;
             }
@@ -93,22 +95,60 @@ namespace Pythime
                 if (customizer != null) customizer.enabled = false;
             }
 
-            target.transform.localScale = Vector3.one * 1.55f;
+            target.transform.localScale = Vector3.one * 1.25f;
             lastPosition = player.position;
             ApplyIdle();
+            Debug.Log($"Pythime: player oficial carregado com sucesso ({texture.width}x{texture.height}).");
         }
 
-        private static SheetSource LoadSource()
+        private static Texture2D LoadPlayerTexture()
         {
+            var directTexture = Resources.Load<Texture2D>(ResourcePath);
+            if (directTexture != null)
+                return directTexture;
+
             var sprite = Resources.Load<Sprite>(ResourcePath);
             if (sprite != null && sprite.texture != null)
-                return new SheetSource(sprite.texture, sprite.textureRect);
+                return sprite.texture;
 
-            var texture = Resources.Load<Texture2D>(ResourcePath);
-            if (texture != null)
-                return new SheetSource(texture, new Rect(0f, 0f, texture.width, texture.height));
+            var sprites = Resources.LoadAll<Sprite>(ResourcePath);
+            if (sprites != null && sprites.Length > 0 && sprites[0] != null && sprites[0].texture != null)
+                return sprites[0].texture;
 
-            return default;
+            var characterSprites = Resources.LoadAll<Sprite>("Characters");
+            foreach (var candidate in characterSprites)
+            {
+                if (candidate == null || candidate.texture == null) continue;
+                if (candidate.name.ToLowerInvariant().Contains("player_marty_sheet"))
+                    return candidate.texture;
+            }
+
+            var diskPath = Path.Combine(Application.dataPath, DiskRelativePath.Replace('/', Path.DirectorySeparatorChar));
+            if (File.Exists(diskPath))
+            {
+                var bytes = File.ReadAllBytes(diskPath);
+                var texture = new Texture2D(2, 2, TextureFormat.RGBA32, false)
+                {
+                    name = "player_marty_sheet_disk",
+                    filterMode = FilterMode.Point,
+                    wrapMode = TextureWrapMode.Clamp
+                };
+
+                if (texture.LoadImage(bytes, false))
+                    return texture;
+            }
+
+            DebugAvailableCharacterResources(diskPath);
+            return null;
+        }
+
+        private static void DebugAvailableCharacterResources(string diskPath)
+        {
+            var textures = Resources.LoadAll<Texture2D>("Characters");
+            var sprites = Resources.LoadAll<Sprite>("Characters");
+            var textureNames = textures == null || textures.Length == 0 ? "nenhuma texture" : string.Join(", ", System.Array.ConvertAll(textures, t => t != null ? t.name : "null"));
+            var spriteNames = sprites == null || sprites.Length == 0 ? "nenhum sprite" : string.Join(", ", System.Array.ConvertAll(sprites, s => s != null ? s.name : "null"));
+            Debug.LogWarning($"Pythime: Resources/Characters encontrados -> Textures: {textureNames} | Sprites: {spriteNames} | Disco esperado: {diskPath} | Existe no disco: {File.Exists(diskPath)}");
         }
 
         private void Update()
@@ -151,33 +191,25 @@ namespace Pythime
             target.sortingOrder = 80 - Mathf.RoundToInt(player.position.y * 3f);
         }
 
-        private void BuildFrames(SheetSource source)
+        private void BuildFrames(Texture2D texture)
         {
             frames.Clear();
-            var cellWidth = source.Rect.width / Columns;
-            var cellHeight = source.Rect.height / Rows;
-
-            if (cellWidth < 8f || cellHeight < 8f) return;
+            var cellWidth = texture.width / (float)Columns;
+            var cellHeight = texture.height / (float)Rows;
 
             for (var rowFromTop = 0; rowFromTop < Rows; rowFromTop++)
             {
                 for (var column = 0; column < Columns; column++)
                 {
-                    var x = Mathf.RoundToInt(source.Rect.x + column * cellWidth);
-                    var y = Mathf.RoundToInt(source.Rect.y + source.Rect.height - (rowFromTop + 1) * cellHeight);
-                    var w = Mathf.RoundToInt(cellWidth);
-                    var h = Mathf.RoundToInt(cellHeight);
+                    var x = Mathf.RoundToInt(column * cellWidth);
+                    var y = Mathf.RoundToInt(texture.height - (rowFromTop + 1) * cellHeight);
+                    var w = Mathf.RoundToInt((column + 1) * cellWidth) - x;
+                    var h = Mathf.RoundToInt(texture.height - rowFromTop * cellHeight) - y;
 
-                    if (x < 0 || y < 0 || x + w > source.Texture.width || y + h > source.Texture.height)
-                        continue;
+                    if (w <= 0 || h <= 0) continue;
 
-                    var sprite = Sprite.Create(
-                        source.Texture,
-                        new Rect(x, y, w, h),
-                        new Vector2(0.5f, 0.08f),
-                        PixelsPerUnit,
-                        0,
-                        SpriteMeshType.FullRect);
+                    var rect = new Rect(x, y, w, h);
+                    var sprite = Sprite.Create(texture, rect, new Vector2(0.5f, 0.08f), PixelsPerUnit, 0, SpriteMeshType.FullRect);
                     sprite.name = $"Marty_r{rowFromTop}_c{column}";
                     frames[$"{rowFromTop}:{column}"] = sprite;
                 }
@@ -204,19 +236,6 @@ namespace Pythime
         {
             Sprite sprite;
             return frames.TryGetValue($"{row}:{column}", out sprite) ? sprite : null;
-        }
-
-        private readonly struct SheetSource
-        {
-            public readonly Texture2D Texture;
-            public readonly Rect Rect;
-            public bool IsValid => Texture != null && Rect.width > 0f && Rect.height > 0f;
-
-            public SheetSource(Texture2D texture, Rect rect)
-            {
-                Texture = texture;
-                Rect = rect;
-            }
         }
 
         private enum Direction
