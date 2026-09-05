@@ -10,7 +10,6 @@ using UnityEngine;
 
 namespace Pythime.EditorTools
 {
-    [InitializeOnLoad]
     public static class KenneyUrbanAssetInstaller
     {
         private static readonly PackSpec[] Packs =
@@ -34,17 +33,32 @@ namespace Pythime.EditorTools
 
         private static bool installing;
 
-        static KenneyUrbanAssetInstaller()
+        [MenuItem("Pythime/Install or Update CC0 Art Packs")]
+        public static void InstallFromMenu()
         {
-            EditorApplication.delayCall += EnsureInstalled;
+            if (installing)
+            {
+                Debug.Log("Pythime: instalação de arte já está em andamento.");
+                return;
+            }
+
+            _ = InstallAllAsync();
         }
 
-        [MenuItem("Pythime/Install or Update CC0 Art Packs")]
-        public static async void EnsureInstalled()
+        [MenuItem("Pythime/Show CC0 Art Status")]
+        public static void ShowStatus()
         {
-            if (installing) return;
-            installing = true;
+            foreach (var pack in Packs)
+            {
+                var installed = Directory.Exists(pack.Root) &&
+                                Directory.GetFiles(pack.Root, "*.png", SearchOption.AllDirectories).Length > 0;
+                Debug.Log("Pythime: " + pack.Name + " = " + (installed ? "instalado" : "não instalado"));
+            }
+        }
 
+        private static async Task InstallAllAsync()
+        {
+            installing = true;
             try
             {
                 using (var client = new HttpClient())
@@ -60,12 +74,13 @@ namespace Pythime.EditorTools
                         }
                         catch (Exception exception)
                         {
-                            Debug.LogWarning("Pythime: falha ao instalar " + pack.Name + ". O restante continuará. " + exception.Message);
+                            Debug.LogWarning("Pythime: falha ao instalar " + pack.Name + ". O jogo continuará com os assets já disponíveis. " + exception.Message);
                         }
                     }
                 }
 
                 AssetDatabase.Refresh();
+
                 foreach (var pack in Packs)
                 {
                     try
@@ -77,9 +92,13 @@ namespace Pythime.EditorTools
                         Debug.LogWarning("Pythime: falha ao configurar texturas de " + pack.Name + ". " + exception.Message);
                     }
                 }
-                AssetDatabase.Refresh();
 
-                Debug.Log("Pythime: rotina de packs CC0 finalizada. O jogo usa qualquer pack que tenha sido instalado com sucesso.");
+                AssetDatabase.Refresh();
+                Debug.Log("Pythime: instalação manual de packs CC0 finalizada.");
+            }
+            catch (Exception exception)
+            {
+                Debug.LogWarning("Pythime: instalação de arte interrompida. O Play continua disponível usando o fallback. " + exception.Message);
             }
             finally
             {
@@ -89,7 +108,7 @@ namespace Pythime.EditorTools
 
         private static async Task EnsurePack(HttpClient client, PackSpec pack)
         {
-            var marker = Path.Combine(pack.Root, ".installed_v4");
+            var marker = Path.Combine(pack.Root, ".installed_v5");
             if (File.Exists(marker)) return;
 
             Directory.CreateDirectory(pack.Root);
@@ -112,7 +131,8 @@ namespace Pythime.EditorTools
                                     normalized.IndexOf("/Tilemaps/", StringComparison.OrdinalIgnoreCase) >= 0 ||
                                     normalized.IndexOf("/Spritesheet/", StringComparison.OrdinalIgnoreCase) >= 0 ||
                                     normalized.IndexOf("/Spritesheets/", StringComparison.OrdinalIgnoreCase) >= 0;
-                    var isIndividualTile = pack.ExtractIndividualTiles && normalized.IndexOf("/Tiles/", StringComparison.OrdinalIgnoreCase) >= 0;
+                    var isIndividualTile = pack.ExtractIndividualTiles &&
+                                           normalized.IndexOf("/Tiles/", StringComparison.OrdinalIgnoreCase) >= 0;
                     var isReference = normalized.EndsWith("Sample.png", StringComparison.OrdinalIgnoreCase) ||
                                       normalized.EndsWith("Preview.png", StringComparison.OrdinalIgnoreCase);
                     var isLicense = normalized.EndsWith("License.txt", StringComparison.OrdinalIgnoreCase) ||
@@ -123,6 +143,7 @@ namespace Pythime.EditorTools
                     var folder = isIndividualTile ? "Tiles" : isTilemap ? "Tilemap" : "Reference";
                     var targetFolder = Path.Combine(pack.Root, folder);
                     Directory.CreateDirectory(targetFolder);
+
                     var fileName = normalized.Split('/').Last();
                     if (string.IsNullOrWhiteSpace(fileName)) continue;
                     entry.ExtractToFile(Path.Combine(targetFolder, fileName), true);
@@ -164,7 +185,7 @@ namespace Pythime.EditorTools
             }
         }
 
-        private readonly struct PackSpec
+        private sealed class PackSpec
         {
             public readonly string Name;
             public readonly string Url;
