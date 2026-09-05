@@ -50,20 +50,36 @@ namespace Pythime.EditorTools
                 using (var client = new HttpClient())
                 {
                     client.Timeout = TimeSpan.FromSeconds(45);
+                    client.DefaultRequestHeaders.UserAgent.ParseAdd("Pythime-Unity/1.0");
+
                     foreach (var pack in Packs)
-                        await EnsurePack(client, pack);
+                    {
+                        try
+                        {
+                            await EnsurePack(client, pack);
+                        }
+                        catch (Exception exception)
+                        {
+                            Debug.LogWarning("Pythime: falha ao instalar " + pack.Name + ". O restante continuará. " + exception.Message);
+                        }
+                    }
                 }
 
                 AssetDatabase.Refresh();
                 foreach (var pack in Packs)
-                    ConfigureTextures(pack.Root);
+                {
+                    try
+                    {
+                        ConfigureTextures(pack.Root);
+                    }
+                    catch (Exception exception)
+                    {
+                        Debug.LogWarning("Pythime: falha ao configurar texturas de " + pack.Name + ". " + exception.Message);
+                    }
+                }
                 AssetDatabase.Refresh();
 
-                Debug.Log("Pythime: packs CC0 urbanos atualizados. RPG Urban, Modern City e Indoors estão disponíveis.");
-            }
-            catch (Exception exception)
-            {
-                Debug.LogWarning("Pythime: não foi possível atualizar todos os packs CC0 automaticamente. Use Pythime > Install or Update CC0 Art Packs para tentar novamente. " + exception.Message);
+                Debug.Log("Pythime: rotina de packs CC0 finalizada. O jogo usa qualquer pack que tenha sido instalado com sucesso.");
             }
             finally
             {
