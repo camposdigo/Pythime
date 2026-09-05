@@ -49,21 +49,56 @@ namespace Pythime
             var root = new GameObject($"Era_{year}");
             root.transform.SetParent(parent);
 
-            var map = new GameObject($"PixelTown_{year}");
-            map.transform.SetParent(root.transform);
-            var mapRenderer = map.AddComponent<SpriteRenderer>();
-            mapRenderer.sprite = PixelArtFactory.CreateTownMap(year);
-            mapRenderer.sortingOrder = -20;
+            if (!TryBuildKenneyWorld(root.transform, year))
+            {
+                var map = new GameObject($"PixelTown_{year}");
+                map.transform.SetParent(root.transform);
+                var mapRenderer = map.AddComponent<SpriteRenderer>();
+                mapRenderer.sprite = PixelArtFactory.CreateTownMap(year);
+                mapRenderer.sortingOrder = -20;
 
-            AddBuildingCollider(root.transform, 2, 15, 8, 6);
-            AddBuildingCollider(root.transform, 12, 15, 7, 6);
-            AddBuildingCollider(root.transform, 2, 1, 8, 5);
-            AddBuildingCollider(root.transform, 12, 1, 7, 5);
-            AddBuildingCollider(root.transform, 27, 15, 4, 6);
-            AddBuildingCollider(root.transform, 27, 1, 4, 5);
+                AddBuildingCollider(root.transform, 2, 15, 8, 6);
+                AddBuildingCollider(root.transform, 12, 15, 7, 6);
+                AddBuildingCollider(root.transform, 2, 1, 8, 5);
+                AddBuildingCollider(root.transform, 12, 1, 7, 5);
+                AddBuildingCollider(root.transform, 27, 15, 4, 6);
+                AddBuildingCollider(root.transform, 27, 1, 4, 5);
+            }
+
             AddMapBounds(root.transform);
-
             return root;
+        }
+
+        private static bool TryBuildKenneyWorld(Transform parent, int year)
+        {
+            var texture = Resources.Load<Texture2D>("PythimeArt/KenneyRPGUrban/Sample");
+            if (texture == null || texture.width < 32 || texture.height < 32) return false;
+
+            var cropBottom = Mathf.Min(24, Mathf.Max(0, texture.height / 18));
+            var rect = new Rect(0, cropBottom, texture.width, texture.height - cropBottom);
+            var sprite = Sprite.Create(texture, rect, new Vector2(0.5f, 0.5f), 16f, 0, SpriteMeshType.FullRect);
+            sprite.name = $"KenneyUrbanReference_{year}";
+
+            var map = new GameObject($"CC0UrbanTown_{year}");
+            map.transform.SetParent(parent);
+            var renderer = map.AddComponent<SpriteRenderer>();
+            renderer.sprite = sprite;
+            renderer.sortingOrder = -20;
+
+            var size = sprite.bounds.size;
+            map.transform.localScale = new Vector3(
+                PixelArtFactory.MapWidthTiles / Mathf.Max(0.01f, size.x),
+                PixelArtFactory.MapHeightTiles / Mathf.Max(0.01f, size.y),
+                1f);
+
+            renderer.color = year switch
+            {
+                1956 => new Color(1f, 0.90f, 0.77f, 1f),
+                2096 => new Color(0.72f, 0.89f, 1f, 1f),
+                _ => Color.white
+            };
+
+            return true;
         }
 
         private static GameObject BuildPlayer(Transform parent)
