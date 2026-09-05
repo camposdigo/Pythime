@@ -44,6 +44,9 @@ namespace Pythime
             var story = runtime.AddComponent<StoryDirector>();
             story.Initialize(player.transform, StoryWorldFactory.WorkshopPoint, soilPoint, StoryWorldFactory.MonolithPoint);
 
+            var customizer = runtime.AddComponent<CharacterCustomizerOverlay>();
+            customizer.Initialize(player);
+
             runtime.AddComponent<PrototypeHUD>();
             runtime.AddComponent<PythonPuzzleConsole>();
         }
@@ -83,8 +86,8 @@ namespace Pythime
             body.interpolation = RigidbodyInterpolation2D.Interpolate;
 
             var collider = player.AddComponent<BoxCollider2D>();
-            collider.size = new Vector2(0.55f, 0.58f);
-            collider.offset = new Vector2(0f, 0.28f);
+            collider.size = new Vector2(0.40f, 0.32f);
+            collider.offset = new Vector2(0f, 0.16f);
 
             player.AddComponent<PlayerController>();
 
