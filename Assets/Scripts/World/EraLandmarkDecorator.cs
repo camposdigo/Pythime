@@ -252,6 +252,11 @@ namespace Pythime
             return new Color32(r, g, b, 255);
         }
 
+        private static Color32 C(byte r, byte g, byte b, byte a)
+        {
+            return new Color32(r, g, b, a);
+        }
+
         private static void FillRect(Texture2D texture, int x, int y, int width, int height, Color32 color)
         {
             for (var py = y; py < y + height; py++)
