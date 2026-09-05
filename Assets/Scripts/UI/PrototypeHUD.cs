@@ -117,7 +117,7 @@ namespace Pythime
             var timeline = TimeTravelManager.Instance;
             if (timeline == null) return;
 
-            var scale = Mathf.Clamp(Screen.height / 900f, 1f, 1.65f);
+            var scale = Mathf.Clamp(Screen.height / 1080f, 0.75f, 1.5f);
             var previousMatrix = GUI.matrix;
             GUI.matrix = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, new Vector3(scale, scale, 1f));
             viewWidth = Screen.width / scale;
@@ -136,7 +136,7 @@ namespace Pythime
             GUI.DrawTexture(new Rect(18, 18, 238, 78), darkPanel);
             GUI.Label(new Rect(34, 25, 190, 31), "PYTHIME", brandStyle);
             GUI.Label(new Rect(34, 56, 205, 20), location.ToUpperInvariant(), smallStyle);
-            GUI.Label(new Rect(34, 76, 205, 18), "TAB personagem   •   P terminal", smallStyle);
+            GUI.Label(new Rect(34, 76, 205, 18), "WASD mover   •   P terminal", smallStyle);
         }
 
         private void DrawTimeline(int currentYear)
@@ -178,7 +178,7 @@ namespace Pythime
 
         private void DrawMission(StoryDirector director, int currentYear)
         {
-            var width = Mathf.Min(455f, viewWidth * 0.40f);
+            var width = Mathf.Min(360f, viewWidth * 0.30f);
             var rect = new Rect(viewWidth - width - 18f, 18f, width, 174f);
             GUI.DrawTexture(rect, darkerPanel);
 
@@ -226,7 +226,7 @@ namespace Pythime
 
             var width = Mathf.Min(650f, viewWidth - 80f);
             var x = (viewWidth - width) * 0.5f;
-            var y = director.DialogueOpen ? viewHeight - 214f : viewHeight - 68f;
+            var y = director.DialogueOpen ? viewHeight - 238f : viewHeight - 68f;
             GUI.DrawTexture(new Rect(x, y, width, 42f), darkPanel);
             GUI.Label(new Rect(x + 12, y + 6, width - 24, 30f), director.ContextHint, hintStyle);
         }

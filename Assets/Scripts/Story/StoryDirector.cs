@@ -78,7 +78,7 @@ namespace Pythime
                 "TOCK|O impacto rasgou Pythime em três versões da mesma cidade.",
                 "TOCK|1956. 2026. 2096. Todas existem ao mesmo tempo e estão vazando umas nas outras.",
                 "TOCK|Sua máquina sobreviveu, mais ou menos. Mas o Chrono Core não.",
-                "TOCK|Primeiro passo: chegar à Oficina Temporal. Siga o marcador amarelo no nordeste da cidade."
+                "TOCK|Primeiro passo: chegar à Oficina Temporal. Siga o marcador amarelo."
             }, () =>
             {
                 chapterStage = 1;
@@ -337,16 +337,20 @@ namespace Pythime
             var speaker = split.Length > 1 ? split[0] : string.Empty;
             var text = split.Length > 1 ? split[1] : raw;
 
-            var width = Mathf.Min(Screen.width - 80f, 940f);
+            var scale = Mathf.Clamp(Screen.height / 1080f, .75f, 1.5f);
+            var previousMatrix = GUI.matrix;
+            GUI.matrix = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, new Vector3(scale, scale, 1f));
+            var width = Mathf.Min(Screen.width / scale - 80f, 940f);
             var height = 158f;
-            var x = (Screen.width - width) * 0.5f;
-            var y = Screen.height - height - 24f;
+            var x = (Screen.width / scale - width) * 0.5f;
+            var y = Screen.height / scale - height - 24f;
 
             GUI.DrawTexture(new Rect(x, y, width, height), dialogueTexture);
             GUI.Label(new Rect(x + 24, y + 16, 180, 28), speaker, dialogueNameStyle);
             GUI.Label(new Rect(x + 24, y + 50, width - 48, 70), text, dialogueStyle);
             GUI.Label(new Rect(x + width - 430, y + 124, 406, 22),
                 "ESPAÇO / ENTER / X continua   •   ESC pula", dialogueHintStyle);
+            GUI.matrix = previousMatrix;
         }
 
         private static Texture2D MakeTexture(Color32 color)

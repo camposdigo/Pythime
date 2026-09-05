@@ -1,217 +1,211 @@
-using System.Collections;
-using System.Reflection;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Pythime
 {
-    [DefaultExecutionOrder(-1800)]
     public sealed class OfficialEraMapRuntime : MonoBehaviour
     {
-        private const string RootName = "PythimeOfficialMaps";
-        private static readonly Vector2 InstituteDoor = StoryWorldFactory.TileToWorld(32f, 21.2f);
-        private static readonly Vector2 FountainPoint = StoryWorldFactory.TileToWorld(32f, 15.7f);
-        private static readonly Vector2 FutureAnomaly = StoryWorldFactory.TileToWorld(32f, 27.5f);
-        private static readonly int[] Years = { 1956, 2026, 2096 };
-        private static bool officialMapsAvailable;
+        public const float MapSize = 64f;
+        public static readonly Rect MapBounds = new Rect(-32f, -32f, MapSize, MapSize);
+        public static Vector2 SpawnPoint => MapPoint(.5f, .55f);
+        public static Vector2 WorkshopPoint => MapPoint(.5f, .505f);
+        public static Vector2 SoilPoint => MapPoint(.5f, .555f);
+        public static Vector2 AnomalyPoint => MapPoint(.5f, .73f);
+        private static bool? available;
+        private readonly List<Sprite> ownedSprites = new List<Sprite>();
+        private TimeTravelManager timeline;
+        private Transform player;
 
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-        private static void Bootstrap()
+        public static bool IsAvailable
         {
-            if (GameObject.Find(RootName) != null) return;
-            var root = new GameObject(RootName);
-            root.AddComponent<OfficialEraMapRuntime>();
-        }
-
-        private IEnumerator Start()
-        {
-            for (var i = 0; i < 180; i++)
+            get
             {
-                if (GameObject.Find("PythimeRuntime") != null && GameObject.Find("Era_2026") != null)
-                    break;
-                yield return null;
-            }
-
-            officialMapsAvailable = HasOfficialMaps();
-            if (!officialMapsAvailable) yield break;
-
-            ApplyOfficialMaps();
-            DisableOldProceduralPolish();
-            DisableOldBuildingColliders();
-            DisableRuntimeObject("PythimeAreaPolish");
-            DisableRuntimeObject("PythimeWorldDepth");
-            DisableRuntimeObject("PythimeWorldDensity");
-            DisableRuntimeObject("PythimeKenneyTilemapOverlay");
-            DisableRuntimeObject("PythimeNpcPopulation");
-            DisableRuntimeObject("PythimeNpcVisualVariation");
-            DisableRuntimeObject("PythimeSocialNpcGroups");
-            DisableRuntimeObject("PythimeWorkshopInterior");
-            BuildOfficialMapCollisions();
-            MovePlayerToOfficialStart();
-            PatchStoryTargets();
-            TuneCameraForOfficialMap();
-        }
-
-        private static bool HasOfficialMaps()
-        {
-            return Resources.Load<Texture2D>("OfficialMaps/city_1956") != null
-                || Resources.Load<Texture2D>("OfficialMaps/city_2026") != null
-                || Resources.Load<Texture2D>("OfficialMaps/city_2096") != null;
-        }
-
-        private static void ApplyOfficialMaps()
-        {
-            foreach (var year in Years)
-            {
-                var texture = Resources.Load<Texture2D>("OfficialMaps/city_" + year);
-                var mapRenderer = FindMapRenderer(year);
-                if (texture == null || mapRenderer == null) continue;
-
-                texture.filterMode = FilterMode.Point;
-                texture.wrapMode = TextureWrapMode.Clamp;
-
-                var ppu = texture.width / (float)StoryWorldFactory.MapWidthTiles;
-                var sprite = Sprite.Create(
-                    texture,
-                    new Rect(0f, 0f, texture.width, texture.height),
-                    new Vector2(0.5f, 0.5f),
-                    ppu,
-                    0,
-                    SpriteMeshType.FullRect);
-                sprite.name = "OfficialCity_" + year;
-
-                mapRenderer.sprite = sprite;
-                mapRenderer.color = Color.white;
-                mapRenderer.sortingOrder = -60;
-                mapRenderer.transform.localPosition = Vector3.zero;
-                mapRenderer.transform.localScale = Vector3.one;
+                if (!available.HasValue)
+                    available = GetMapTexture(1956) != null && GetMapTexture(2026) != null && GetMapTexture(2096) != null;
+                return available.Value;
             }
         }
 
-        private static SpriteRenderer FindMapRenderer(int year)
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetAvailability() => available = null;
+
+        public static Texture2D GetMapTexture(int year)
         {
-            var map = GameObject.Find("PythimeCity_" + year);
-            return map != null ? map.GetComponent<SpriteRenderer>() : null;
+            var path = "OfficialMaps/city_" + year;
+            var sprite = Resources.Load<Sprite>(path);
+            return sprite != null ? sprite.texture : Resources.Load<Texture2D>(path);
         }
 
-        private static void DisableOldProceduralPolish()
-        {
-            foreach (var year in Years)
-            {
-                var era = GameObject.Find("Era_" + year);
-                if (era == null) continue;
+        // Normalized source coordinates measured from the top-left of the official artwork.
+        public static Vector2 MapPoint(float x, float y) => new Vector2((x - .5f) * MapSize, (.5f - y) * MapSize);
 
-                for (var i = 0; i < era.transform.childCount; i++)
-                {
-                    var child = era.transform.GetChild(i).gameObject;
-                    var name = child.name;
-                    if (name.Contains("AreaPolish") || name.Contains("Kenney") || name.Contains("Depth") || name.Contains("StreetProp") || name.Contains("TemporalVehicle") || name.Contains("ImpossibleMonolith") || name.Contains("TemporalSoil"))
-                        child.SetActive(false);
-                }
-            }
+        public void BuildEra(Transform era, int year)
+        {
+            var texture = GetMapTexture(year);
+            var map = new GameObject("PythimeCity_" + year);
+            map.transform.SetParent(era, false);
+            var renderer = map.AddComponent<SpriteRenderer>();
+            var sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(.5f, .5f), texture.width / MapSize, 0, SpriteMeshType.FullRect);
+            sprite.name = "OfficialCity_" + year;
+            ownedSprites.Add(sprite);
+            renderer.sprite = sprite;
+            renderer.sortingOrder = -60;
+            var collisionRoot = new GameObject("PythimeOfficialMapColliders");
+            collisionRoot.transform.SetParent(era, false);
+            var root = collisionRoot.transform;
+            Box(root, "MapTop", 0, -.015f, 1, 0);
+            Box(root, "MapBottom", 0, 1, 1, 1.015f);
+            Box(root, "MapLeft", -.015f, 0, 0, 1);
+            Box(root, "MapRight", 1, 0, 1.015f, 1);
+            if (year == 1956) BuildPastColliders(root);
+            else BuildModernColliders(root);
         }
 
-        private static void DisableRuntimeObject(string name)
+        private static void BuildModernColliders(Transform root)
         {
-            var go = GameObject.Find(name);
-            if (go != null) go.SetActive(false);
+            Box(root, "NorthBuildingsWest", .010f, .006f, .421f, .151f);
+            Box(root, "NorthBuildingsEast", .574f, .007f, .733f, .152f);
+            Box(root, "NorthBuildingsFarEast", .816f, .006f, .965f, .151f);
+            Box(root, "WestBuildingsNorth", .024f, .253f, .157f, .506f);
+            Box(root, "WestBuildingsSouth", .030f, .516f, .160f, .674f);
+            Box(root, "EastBuildingsNorth", .822f, .246f, .976f, .397f);
+            Box(root, "EastBuildingsMiddle", .841f, .400f, .971f, .552f);
+            Box(root, "EastBuildingsSouth", .828f, .555f, .969f, .671f);
+            Box(root, "SouthBuildingsWest", .019f, .827f, .124f, .978f);
+            Box(root, "SouthBuildingsMiddle", .190f, .842f, .409f, .978f);
+            Box(root, "SouthBuildingsEast", .597f, .847f, .731f, .978f);
+            Box(root, "SouthBuildingsFarEast", .830f, .827f, .970f, .978f);
+            Box(root, "CentralBuilding", .351f, .235f, .649f, .474f);
+            Box(root, "CentralTower", .458f, .180f, .540f, .237f);
+            Box(root, "CentralHedgeLeft", .325f, .337f, .350f, .492f);
+            Box(root, "CentralHedgeRight", .650f, .337f, .675f, .492f);
+            Box(root, "CentralHedgeSouthLeft", .348f, .471f, .423f, .495f);
+            Box(root, "CentralHedgeSouthRight", .575f, .471f, .655f, .495f);
+            Box(root, "Fountain", .454f, .611f, .546f, .697f);
+            // C-shaped gardens preserve the inner paths around the fountain.
+            Box(root, "PlanterNorthLeft", .321f, .532f, .463f, .610f);
+            Box(root, "PlanterNorthRight", .535f, .532f, .677f, .610f);
+            Box(root, "PlanterWest", .318f, .610f, .388f, .708f);
+            Box(root, "PlanterEast", .609f, .610f, .678f, .708f);
+            Box(root, "PlanterSouthLeft", .320f, .705f, .467f, .735f);
+            Box(root, "PlanterSouthRight", .575f, .705f, .677f, .735f);
+            Tree(root, "NorthEast", .780f, .102f);
+            Tree(root, "WestNorth", .181f, .346f);
+            Tree(root, "WestMiddle", .171f, .450f);
+            Tree(root, "SouthWest", .151f, .907f);
+            Tree(root, "SouthEast", .773f, .906f);
+            Lamp(root, "NorthWest", .434f, .149f);
+            Lamp(root, "NorthEast", .563f, .149f);
+            Lamp(root, "HallWest", .332f, .311f);
+            Lamp(root, "HallEast", .665f, .311f);
+            Lamp(root, "PlazaWest", .296f, .452f);
+            Lamp(root, "PlazaEast", .702f, .452f);
+            Lamp(root, "SouthWest", .419f, .856f);
+            Lamp(root, "SouthEast", .578f, .856f);
         }
 
-        private static void DisableOldBuildingColliders()
+        private static void BuildPastColliders(Transform root)
         {
-            foreach (var year in Years)
-            {
-                var era = GameObject.Find("Era_" + year);
-                if (era == null) continue;
-
-                var colliders = era.GetComponentsInChildren<BoxCollider2D>(true);
-                foreach (var collider in colliders)
-                {
-                    if (collider == null) continue;
-                    var n = collider.gameObject.name;
-                    if (n.StartsWith("BuildingCollider_"))
-                        collider.gameObject.SetActive(false);
-                }
-            }
+            Box(root, "NorthBuildingsWest", .061f, .013f, .216f, .183f);
+            Box(root, "NorthBuildingsMiddle", .341f, .012f, .493f, .184f);
+            Box(root, "NorthBuildingsEast", .503f, .012f, .670f, .177f);
+            Box(root, "NorthCinema", .713f, 0, .938f, .219f);
+            Box(root, "WestBarber", .017f, .240f, .177f, .388f);
+            Box(root, "WestDiner", .013f, .440f, .220f, .574f);
+            Box(root, "EastBooks", .799f, .258f, .986f, .422f);
+            Box(root, "EastGarage", .773f, .461f, .991f, .611f);
+            Box(root, "CentralBuilding", .362f, .295f, .628f, .486f);
+            Box(root, "CentralTower", .445f, .248f, .544f, .296f);
+            Box(root, "Fountain_Memorial", .446f, .576f, .545f, .645f);
+            Box(root, "PlanterNorthLeft", .335f, .410f, .441f, .497f);
+            Box(root, "PlanterNorthRight", .555f, .410f, .652f, .497f);
+            Box(root, "PlanterSouthLeft", .326f, .673f, .438f, .699f);
+            Box(root, "PlanterSouthRight", .558f, .673f, .663f, .699f);
+            Box(root, "SouthPlanter", .375f, .929f, .587f, .962f);
+            Box(root, "MallSign", .068f, .864f, .213f, .948f);
+            Box(root, "WelcomeSign", .794f, .839f, .912f, .930f);
+            Tree(root, "PlazaNorthLeft", .393f, .493f);
+            Tree(root, "PlazaNorthRight", .596f, .493f);
+            Tree(root, "PlazaSouthLeft", .368f, .638f);
+            Tree(root, "PlazaSouthRight", .623f, .638f);
+            Tree(root, "SouthEastUpper", .622f, .841f);
+            Tree(root, "SouthEastLower", .623f, .926f);
+            Tree(root, "NorthWest", .026f, .078f);
+            Tree(root, "NorthWestLower", .025f, .151f);
+            Tree(root, "NorthEast", .977f, .078f);
+            Tree(root, "NorthEastLower", .981f, .179f);
+            Tree(root, "WestMiddle", .018f, .613f);
+            Tree(root, "WestSouth", .024f, .752f);
+            Tree(root, "WestBottom", .027f, .852f);
+            Tree(root, "EastMiddle", .985f, .640f);
+            Tree(root, "EastBottom", .982f, .971f);
+            Lamp(root, "NorthWest", .326f, .196f);
+            Lamp(root, "HallWest", .337f, .364f);
+            Lamp(root, "HallEast", .652f, .364f);
+            Lamp(root, "PlazaMiddleLeft", .446f, .555f);
+            Lamp(root, "PlazaMiddleRight", .546f, .555f);
+            Lamp(root, "PlazaSouthLeft", .332f, .695f);
+            Lamp(root, "PlazaSouthRight", .655f, .695f);
+            Lamp(root, "SouthWest", .330f, .797f);
+            Box(root, "BenchLeft", .378f, .526f, .421f, .552f);
+            Box(root, "BenchRight", .573f, .526f, .614f, .552f);
         }
 
-        private static void BuildOfficialMapCollisions()
+        private static void Tree(Transform root, string name, float x, float y) => Box(root, "Tree_" + name, x - .017f, y - .027f, x + .017f, y + .008f);
+        private static void Lamp(Transform root, string name, float x, float y) => Box(root, "Lamp_" + name, x - .008f, y - .008f, x + .008f, y + .008f);
+        private static void Box(Transform root, string name, float left, float top, float right, float bottom)
         {
-            foreach (var year in Years)
-            {
-                var era = GameObject.Find("Era_" + year);
-                if (era == null) continue;
-                if (era.transform.Find("OfficialMapCollision") != null) continue;
-
-                var root = new GameObject("OfficialMapCollision");
-                root.transform.SetParent(era.transform);
-                root.transform.localPosition = Vector3.zero;
-
-                AddCollider(root.transform, "NorthBuildings", 0f, 17.7f, 62f, 7.4f);
-                AddCollider(root.transform, "SouthBuildings", 0f, -20.0f, 62f, 5.0f);
-                AddCollider(root.transform, "WestBuildings", -27.9f, 0.2f, 7.6f, 32f);
-                AddCollider(root.transform, "EastBuildings", 27.9f, 0.2f, 7.6f, 32f);
-
-                AddCollider(root.transform, "CityHallBody", 0f, 7.9f, 10.8f, 7.0f);
-                AddCollider(root.transform, "CityHallSteps", 0f, 3.9f, 5.2f, 1.1f);
-                AddCollider(root.transform, "Fountain", 0f, -7.8f, 3.1f, 2.6f);
-                AddCollider(root.transform, "ParkNorthLeft", -8.0f, -4.0f, 3.0f, 2.2f);
-                AddCollider(root.transform, "ParkNorthRight", 8.0f, -4.0f, 3.0f, 2.2f);
-                AddCollider(root.transform, "ParkSouthLeft", -8.4f, -11.2f, 4.6f, 2.2f);
-                AddCollider(root.transform, "ParkSouthRight", 8.4f, -11.2f, 4.6f, 2.2f);
-
-                AddCollider(root.transform, "MapTop", 0f, 23.45f, 64f, 0.7f);
-                AddCollider(root.transform, "MapBottom", 0f, -23.45f, 64f, 0.7f);
-                AddCollider(root.transform, "MapLeft", -32.35f, 0f, 0.7f, 46f);
-                AddCollider(root.transform, "MapRight", 32.35f, 0f, 0.7f, 46f);
-            }
+            var go = new GameObject("Collider_" + name);
+            go.transform.SetParent(root, false);
+            go.transform.localPosition = MapPoint((left + right) * .5f, (top + bottom) * .5f);
+            go.AddComponent<BoxCollider2D>().size = new Vector2((right - left) * MapSize, (bottom - top) * MapSize);
         }
 
-        private static void AddCollider(Transform parent, string name, float x, float y, float width, float height)
+        public void Initialize(TimeTravelManager manager, Transform playerTransform)
         {
-            var go = new GameObject(name);
-            go.transform.SetParent(parent);
-            go.transform.localPosition = new Vector3(x, y, 0f);
-            var box = go.AddComponent<BoxCollider2D>();
-            box.size = new Vector2(width, height);
-        }
-
-        private static void MovePlayerToOfficialStart()
-        {
-            var player = GameObject.Find("Player");
-            if (player == null) return;
-
-            player.transform.position = StoryWorldFactory.TileToWorld(32f, 13.0f);
-            var body = player.GetComponent<Rigidbody2D>();
-            if (body != null) body.linearVelocity = Vector2.zero;
-        }
-
-        private static void PatchStoryTargets()
-        {
-            var runtime = GameObject.Find("PythimeRuntime");
-            if (runtime == null) return;
-
-            var story = runtime.GetComponent<StoryDirector>();
-            if (story == null) return;
-
-            SetPrivateVector(story, "workshopPoint", InstituteDoor);
-            SetPrivateVector(story, "soilPoint", FountainPoint);
-            SetPrivateVector(story, "monolithPoint", FutureAnomaly);
-
-            if (story.HasObjectiveTarget && story.ChapterStage <= 1)
-                SetPrivateVector(story, "objectiveTarget", InstituteDoor);
-        }
-
-        private static void TuneCameraForOfficialMap()
-        {
+            timeline = manager;
+            player = playerTransform;
+            timeline.EraChanged += EnsureWalkablePosition;
             var camera = Camera.main;
-            if (camera == null) return;
             camera.orthographicSize = 8.2f;
+            camera.GetComponent<CameraFollow>().SetMapBounds(MapBounds);
+            var snap = camera.GetComponent<PixelSnapCamera>();
+            if (snap != null) snap.enabled = false;
+            EnsureWalkablePosition(timeline.CurrentYear);
         }
 
-        private static void SetPrivateVector(StoryDirector story, string fieldName, Vector2 value)
+        private void EnsureWalkablePosition(int year)
         {
-            var field = typeof(StoryDirector).GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic);
-            if (field != null) field.SetValue(story, value);
+            Physics2D.SyncTransforms();
+            Vector2 origin = player.position;
+            if (IsWalkable(origin)) return;
+            // Different eras have different footprints: only relocate if the destination is blocked.
+            for (float radius = .5f; radius <= MapSize; radius += .5f)
+                for (int step = 0; step < 32; step++)
+                {
+                    float angle = step * Mathf.PI / 16f;
+                    Vector2 candidate = origin + new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)) * radius;
+                    if (!IsWalkable(candidate)) continue;
+                    player.position = candidate;
+                    player.GetComponent<Rigidbody2D>().position = candidate;
+                    player.GetComponent<PlayerController>().StopImmediately();
+                    return;
+                }
+            Debug.LogError("Pythime: não foi encontrada posição livre no mapa oficial.");
+        }
+
+        public static bool IsWalkable(Vector2 position)
+        {
+            if (!new Rect(-31.5f, -31.5f, 63f, 63f).Contains(position)) return false;
+            foreach (var collider in Physics2D.OverlapBoxAll(position + new Vector2(0, .16f), new Vector2(.5f, .4f), 0))
+                if (!collider.isTrigger && collider.transform.parent != null && collider.transform.parent.name == "PythimeOfficialMapColliders") return false;
+            return true;
+        }
+
+        private void OnDestroy()
+        {
+            if (timeline != null) timeline.EraChanged -= EnsureWalkablePosition;
+            foreach (var sprite in ownedSprites) if (sprite != null) Destroy(sprite);
         }
     }
 }

@@ -70,7 +70,7 @@ namespace Pythime
             if (TryReadArgument(text, "player.speed", out var speedText) &&
                 float.TryParse(speedText, NumberStyles.Float, CultureInfo.InvariantCulture, out var speed))
             {
-                var player = FindFirstObjectByType<PlayerController>();
+                var player = FindAnyObjectByType<PlayerController>();
                 if (player == null)
                 {
                     output = "player não encontrado";

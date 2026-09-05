@@ -13,6 +13,7 @@ namespace Pythime
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Bootstrap()
         {
+            if (OfficialEraMapRuntime.IsAvailable) return;
             if (GameObject.Find("PythimeKenneyTilemaps") != null) return;
             var root = new GameObject("PythimeKenneyTilemaps");
             root.AddComponent<KenneyTilemapOverlay>();

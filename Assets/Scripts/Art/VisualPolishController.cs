@@ -13,6 +13,7 @@ namespace Pythime
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Bootstrap()
         {
+            if (OfficialEraMapRuntime.IsAvailable) return;
             if (GameObject.Find("PythimeVisualPolish") != null) return;
             var go = new GameObject("PythimeVisualPolish");
             go.AddComponent<VisualPolishController>();

@@ -51,11 +51,11 @@ namespace Pythime
             BuildStyles();
             GUI.depth = -30;
 
-            var scale = Mathf.Clamp(Screen.height / 1440f, 0.9f, 1.3f);
-            var width = 294f * scale;
-            var height = 220f * scale;
+            var scale = Mathf.Clamp(Screen.height / 1080f, 0.75f, 1.5f);
+            var width = 254f * scale;
+            var height = 290f * scale;
             var x = Screen.width - width - 18f * scale;
-            var y = 194f * scale;
+            var y = 204f * scale;
             var outer = new Rect(x, y, width, height);
             var inner = new Rect(x + 11f * scale, y + 38f * scale, width - 22f * scale, height - 58f * scale);
 
@@ -78,6 +78,15 @@ namespace Pythime
             var timeline = TimeTravelManager.Instance;
             var currentYear = timeline != null ? timeline.CurrentYear : 2026;
             var eraTint = TimeShiftPresentation.EraTint(currentYear);
+            if (OfficialEraMapRuntime.IsAvailable)
+            {
+                var texture = OfficialEraMapRuntime.GetMapTexture(currentYear);
+                GUI.DrawTexture(rect, texture, ScaleMode.StretchToFill);
+                if (story != null && story.HasObjectiveTarget)
+                    DrawLandmark(rect, story.ObjectiveTarget, new Color(1f, .78f, .18f), 10f * scale, true);
+                DrawLandmark(rect, player.position, Color.white, 8f * scale, true);
+                return;
+            }
 
             var old = GUI.color;
             GUI.color = new Color(eraTint.r * 0.24f + 0.12f, eraTint.g * 0.24f + 0.14f, eraTint.b * 0.24f + 0.15f, 1f);
@@ -154,7 +163,8 @@ namespace Pythime
         private static Vector2 WorldToMap(Rect map, Vector2 world)
         {
             var normalizedX = Mathf.Clamp01((world.x + StoryWorldFactory.MapWidthTiles * 0.5f) / StoryWorldFactory.MapWidthTiles);
-            var normalizedY = Mathf.Clamp01((world.y + StoryWorldFactory.MapHeightTiles * 0.5f) / StoryWorldFactory.MapHeightTiles);
+            var mapHeight = OfficialEraMapRuntime.IsAvailable ? OfficialEraMapRuntime.MapSize : StoryWorldFactory.MapHeightTiles;
+            var normalizedY = Mathf.Clamp01((world.y + mapHeight * 0.5f) / mapHeight);
             return new Vector2(
                 map.x + normalizedX * map.width,
                 map.y + (1f - normalizedY) * map.height);

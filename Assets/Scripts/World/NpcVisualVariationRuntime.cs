@@ -8,6 +8,7 @@ namespace Pythime
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Bootstrap()
         {
+            if (OfficialEraMapRuntime.IsAvailable) return;
             if (GameObject.Find("PythimeNpcVisualVariation") != null) return;
             var root = new GameObject("PythimeNpcVisualVariation");
             root.AddComponent<NpcVisualVariationRuntime>();

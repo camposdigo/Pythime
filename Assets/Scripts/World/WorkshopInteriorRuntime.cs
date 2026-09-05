@@ -24,6 +24,7 @@ namespace Pythime
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Bootstrap()
         {
+            if (OfficialEraMapRuntime.IsAvailable) return;
             if (GameObject.Find("PythimeWorkshopInterior") != null) return;
             var root = new GameObject("PythimeWorkshopInterior");
             root.AddComponent<WorkshopInteriorRuntime>();

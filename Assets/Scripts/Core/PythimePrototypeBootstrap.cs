@@ -10,14 +10,21 @@ namespace Pythime
             if (GameObject.Find("PythimeRuntime") != null) return;
 
             var runtime = new GameObject("PythimeRuntime");
+            OfficialEraMapRuntime officialMaps = null;
+            if (OfficialEraMapRuntime.IsAvailable)
+            {
+                var officialRoot = new GameObject("PythimeOfficialMaps");
+                officialRoot.transform.SetParent(runtime.transform, false);
+                officialMaps = officialRoot.AddComponent<OfficialEraMapRuntime>();
+            }
 
             var timelineObject = new GameObject("TimeTravelManager");
             timelineObject.transform.SetParent(runtime.transform);
             var timeline = timelineObject.AddComponent<TimeTravelManager>();
 
-            var world1956 = BuildWorld(runtime.transform, 1956);
-            var world2026 = BuildWorld(runtime.transform, 2026);
-            var world2096 = BuildWorld(runtime.transform, 2096);
+            var world1956 = BuildWorld(runtime.transform, 1956, officialMaps);
+            var world2026 = BuildWorld(runtime.transform, 2026, officialMaps);
+            var world2096 = BuildWorld(runtime.transform, 2096, officialMaps);
 
             timeline.RegisterEra(1956, world1956);
             timeline.RegisterEra(2026, world2026);
@@ -27,8 +34,8 @@ namespace Pythime
             SetupCamera(player.transform);
             BuildTock(runtime.transform, player.transform);
 
-            var soilPoint = StoryWorldFactory.SoilPoint;
-            CreateSoilPatch(world1956.transform, soilPoint);
+            var soilPoint = officialMaps != null ? OfficialEraMapRuntime.SoilPoint : StoryWorldFactory.SoilPoint;
+            if (officialMaps == null) CreateSoilPatch(world1956.transform, soilPoint);
 
             var seedling = BuildTemporalTree(world1956.transform, "Seedling_1956", soilPoint, 1956, false);
             var tree2026 = BuildTemporalTree(world2026.transform, "Tree_2026", soilPoint, 2026, true);
@@ -42,10 +49,11 @@ namespace Pythime
             timeline.SetInitialYear(2026);
 
             var story = runtime.AddComponent<StoryDirector>();
-            story.Initialize(player.transform, StoryWorldFactory.WorkshopPoint, soilPoint, StoryWorldFactory.MonolithPoint);
+            story.Initialize(player.transform,
+                officialMaps != null ? OfficialEraMapRuntime.WorkshopPoint : StoryWorldFactory.WorkshopPoint,
+                soilPoint, officialMaps != null ? OfficialEraMapRuntime.AnomalyPoint : StoryWorldFactory.MonolithPoint);
 
-            var customizer = runtime.AddComponent<CharacterCustomizerOverlay>();
-            customizer.Initialize(player);
+            if (officialMaps != null) officialMaps.Initialize(timeline, player.transform);
 
             var beacon = runtime.AddComponent<ObjectiveBeacon>();
             beacon.Initialize(player.transform, story);
@@ -59,10 +67,15 @@ namespace Pythime
             runtime.AddComponent<PythonPuzzleConsole>();
         }
 
-        private static GameObject BuildWorld(Transform parent, int year)
+        private static GameObject BuildWorld(Transform parent, int year, OfficialEraMapRuntime officialMaps)
         {
             var root = new GameObject($"Era_{year}");
             root.transform.SetParent(parent);
+            if (officialMaps != null)
+            {
+                officialMaps.BuildEra(root.transform, year);
+                return root;
+            }
 
             var map = new GameObject($"PythimeCity_{year}");
             map.transform.SetParent(root.transform);
@@ -92,7 +105,7 @@ namespace Pythime
         {
             var player = new GameObject("Player");
             player.transform.SetParent(parent);
-            player.transform.position = StoryWorldFactory.StartPoint;
+            player.transform.position = OfficialEraMapRuntime.IsAvailable ? OfficialEraMapRuntime.SpawnPoint : StoryWorldFactory.StartPoint;
 
             var body = player.AddComponent<Rigidbody2D>();
             body.gravityScale = 0f;
@@ -118,7 +131,7 @@ namespace Pythime
             var avatar = avatarObject.AddComponent<SpriteRenderer>();
             avatar.sortingOrder = 20;
 
-            var visual = player.AddComponent<PlayerVisual>();
+            var visual = player.AddComponent<OfficialPlayerAnimator>();
             visual.Initialize(avatar);
             return player;
         }
@@ -188,6 +201,8 @@ namespace Pythime
             var tree = new GameObject(name);
             tree.transform.SetParent(parent);
             tree.transform.localPosition = position;
+            // Keep temporal state objects, but do not paint procedural trees over official art.
+            if (OfficialEraMapRuntime.IsAvailable) return tree;
             var renderer = tree.AddComponent<SpriteRenderer>();
             renderer.sprite = PixelArtFactory.CreateTreeSprite(year, grown);
             renderer.sortingOrder = 13;

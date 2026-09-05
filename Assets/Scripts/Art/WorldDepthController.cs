@@ -9,6 +9,7 @@ namespace Pythime
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Bootstrap()
         {
+            if (OfficialEraMapRuntime.IsAvailable) return;
             if (GameObject.Find("PythimeWorldDepth") != null) return;
             var root = new GameObject("PythimeWorldDepth");
             root.AddComponent<WorldDepthController>();

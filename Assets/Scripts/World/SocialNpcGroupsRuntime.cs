@@ -20,6 +20,7 @@ namespace Pythime
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Bootstrap()
         {
+            if (OfficialEraMapRuntime.IsAvailable) return;
             if (GameObject.Find("PythimeSocialNpcGroups") != null) return;
             var root = new GameObject("PythimeSocialNpcGroups");
             root.AddComponent<SocialNpcGroupsRuntime>();
