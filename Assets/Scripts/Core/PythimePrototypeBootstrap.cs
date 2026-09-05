@@ -56,7 +56,7 @@ namespace Pythime
 
             var palette = GetPalette(year);
             CreateBox(root.transform, "Ground", Vector2.zero, new Vector2(24f, 16f), palette.ground, -20, false);
-            CreateBox(root.transform, "MainRoad", new Vector2(0f, 0f), new Vector2(24f, 3.1f), palette.road, -10, false);
+            CreateBox(root.transform, "MainRoad", Vector2.zero, new Vector2(24f, 3.1f), palette.road, -10, false);
             CreateBox(root.transform, "NorthWalk", new Vector2(0f, 2.0f), new Vector2(24f, 0.85f), palette.walk, -9, false);
             CreateBox(root.transform, "SouthWalk", new Vector2(0f, -2.0f), new Vector2(24f, 0.85f), palette.walk, -9, false);
 
@@ -123,7 +123,12 @@ namespace Pythime
 
         private static void BuildBuilding(Transform parent, Vector2 position, Vector2 size, Color color, int year, string label)
         {
-            var building = CreateBox(parent, $"Building_{label}_{year}", position, size, color, 3, true);
+            var building = new GameObject($"Building_{label}_{year}");
+            building.transform.SetParent(parent);
+            building.transform.localPosition = position;
+
+            CreateBox(building.transform, "Facade", Vector2.zero, size, color, 3, true);
+
             var roofColor = Color.Lerp(color, year == 2096 ? new Color(0.25f, 0.90f, 1f) : Color.black, 0.22f);
             CreateBox(building.transform, "RoofLine", new Vector2(0f, size.y * 0.34f), new Vector2(size.x * 0.88f, 0.22f), roofColor, 4, false);
 
