@@ -46,33 +46,24 @@ namespace Pythime
             if (!front && !left && !right) return;
 
             var skin = texture.GetPixel(12, 22);
-            var eye = new Color32(24, 27, 31, 255);
+            var eye = new Color32(43, 35, 31, 255);
             var mouth = new Color32(151, 82, 72, 255);
 
             if (front)
             {
-                Paint(texture, 8, 23, 3, 2, skin);
-                Paint(texture, 13, 23, 3, 2, skin);
-                texture.SetPixel(9, 25, skin);
-                texture.SetPixel(14, 25, skin);
-                texture.SetPixel(11, 20, skin);
-                texture.SetPixel(12, 20, skin);
-
-                texture.SetPixel(9, 24, eye);
-                texture.SetPixel(15, 24, eye);
-                texture.SetPixel(11, 21, mouth);
+                Paint(texture, 7, 22, 10, 4, skin);
+                texture.SetPixel(10, 24, eye);
+                texture.SetPixel(14, 24, eye);
                 texture.SetPixel(12, 21, mouth);
             }
             else if (left)
             {
-                Paint(texture, 6, 23, 3, 2, skin);
-                texture.SetPixel(6, 20, skin);
-                texture.SetPixel(7, 24, eye);
+                Paint(texture, 5, 22, 5, 4, skin);
+                texture.SetPixel(8, 24, eye);
             }
             else
             {
-                Paint(texture, 15, 23, 3, 2, skin);
-                texture.SetPixel(17, 20, skin);
+                Paint(texture, 14, 22, 5, 4, skin);
                 texture.SetPixel(16, 24, eye);
             }
 
