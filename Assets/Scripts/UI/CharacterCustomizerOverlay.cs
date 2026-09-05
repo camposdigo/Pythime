@@ -10,9 +10,10 @@ namespace Pythime
         private PlayerVisual visual;
         private PlayerController controller;
         private bool open;
-        private Rect windowRect = new Rect(24f, 126f, 420f, 540f);
+        private Rect windowRect = new Rect(24f, 126f, 440f, 590f);
         private GUIStyle headerStyle;
         private GUIStyle hintStyle;
+        private GUIStyle subStyle;
 
         public void Initialize(GameObject player)
         {
@@ -53,8 +54,10 @@ namespace Pythime
         private void DrawWindow(int id)
         {
             var y = 32f;
-            GUI.Label(new Rect(18, y, 360, 28), "Customização", headerStyle);
-            y += 36f;
+            GUI.Label(new Rect(18, y, 380, 28), "Customização", headerStyle);
+            y += 29f;
+            GUI.Label(new Rect(18, y, 390, 22), "Monte o viajante do tempo do seu jeito.", subStyle);
+            y += 32f;
 
             DrawRow(ref y, "Preset", visual.PresetName, () => visual.CyclePreset(-1), () => visual.CyclePreset(1));
             DrawRow(ref y, "Pele", visual.SkinName, () => visual.CycleSkin(-1), () => visual.CycleSkin(1));
@@ -67,35 +70,42 @@ namespace Pythime
             DrawRow(ref y, "Acessório", visual.AccessoryName, () => visual.CycleAccessory(-1), () => visual.CycleAccessory(1));
 
             y += 8f;
-            GUI.Box(new Rect(18, y, 384, 52), string.Empty);
-            GUI.Label(new Rect(30, y + 8, 360, 38),
-                "Preset Time Traveler 85: colete vermelho, camisa clara, jeans e tênis branco — uma homenagem retrô, não uma cópia literal.", hintStyle);
+            GUI.Box(new Rect(18, y, 404, 56), string.Empty);
+            GUI.Label(new Rect(30, y + 8, 380, 42),
+                "Marty 1985: cabelo castanho bagunçado, camisa xadrez, jaqueta jeans, colete vermelho, jeans e tênis branco.", hintStyle);
 
-            y += 66f;
-            if (GUI.Button(new Rect(18, y, 184, 34), "TIME TRAVELER 85")) visual.ApplyPreset(1);
-            if (GUI.Button(new Rect(218, y, 184, 34), "FECHAR  [TAB]")) SetOpen(false);
+            y += 70f;
+            if (GUI.Button(new Rect(18, y, 194, 36), "MARTY 1985")) visual.ApplyPreset(1);
+            if (GUI.Button(new Rect(228, y, 194, 36), "FECHAR  [TAB]")) SetOpen(false);
 
-            GUI.DragWindow(new Rect(0, 0, 420, 28));
+            GUI.DragWindow(new Rect(0, 0, 440, 28));
         }
 
         private static void DrawRow(ref float y, string label, string value, System.Action previous, System.Action next)
         {
-            GUI.Label(new Rect(18, y + 5, 118, 24), label);
-            if (GUI.Button(new Rect(140, y, 34, 30), "<")) previous();
-            GUI.Box(new Rect(180, y, 180, 30), value);
-            if (GUI.Button(new Rect(368, y, 34, 30), ">")) next();
+            GUI.Label(new Rect(18, y + 5, 128, 24), label);
+            if (GUI.Button(new Rect(148, y, 34, 30), "<")) previous();
+            GUI.Box(new Rect(188, y, 188, 30), value);
+            if (GUI.Button(new Rect(386, y, 34, 30), ">")) next();
             y += 38f;
         }
 
         private void BuildStyles()
         {
             if (headerStyle != null) return;
+
             headerStyle = new GUIStyle(GUI.skin.label)
             {
                 fontSize = 20,
                 fontStyle = FontStyle.Bold
             };
             headerStyle.normal.textColor = Color.white;
+
+            subStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = 12
+            };
+            subStyle.normal.textColor = new Color(0.58f, 0.76f, 0.86f);
 
             hintStyle = new GUIStyle(GUI.skin.label)
             {
