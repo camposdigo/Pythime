@@ -8,6 +8,7 @@ namespace Pythime
     {
         private Transform player;
         private PlayerController controller;
+        private Rigidbody2D playerBody;
         private Vector2 workshopPoint;
         private Vector2 soilPoint;
         private Vector2 monolithPoint;
@@ -28,11 +29,13 @@ namespace Pythime
 
         public string Objective => objective;
         public bool ChapterComplete => chapterStage >= 5;
+        public bool DialogueOpen => dialogueOpen;
 
         public void Initialize(Transform playerTransform, Vector2 workshop, Vector2 soil, Vector2 monolith)
         {
             player = playerTransform;
             controller = player != null ? player.GetComponent<PlayerController>() : null;
+            playerBody = player != null ? player.GetComponent<Rigidbody2D>() : null;
             workshopPoint = workshop;
             soilPoint = soil;
             monolithPoint = monolith;
@@ -149,6 +152,8 @@ namespace Pythime
             dialogueComplete = onComplete;
             dialogueOpen = true;
             if (controller != null) controller.enabled = false;
+            if (playerBody != null) playerBody.linearVelocity = Vector2.zero;
+            if (TimeTravelManager.Instance != null) TimeTravelManager.Instance.enabled = false;
         }
 
         private void AdvanceDialogue()
@@ -160,6 +165,7 @@ namespace Pythime
             dialogueLines = Array.Empty<string>();
             dialogueIndex = 0;
             if (controller != null) controller.enabled = true;
+            if (TimeTravelManager.Instance != null) TimeTravelManager.Instance.enabled = true;
             var completion = dialogueComplete;
             dialogueComplete = null;
             completion?.Invoke();
