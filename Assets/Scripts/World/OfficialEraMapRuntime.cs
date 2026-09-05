@@ -12,6 +12,7 @@ namespace Pythime
         private static readonly Vector2 FountainPoint = StoryWorldFactory.TileToWorld(32f, 15.7f);
         private static readonly Vector2 FutureAnomaly = StoryWorldFactory.TileToWorld(32f, 27.5f);
         private static readonly int[] Years = { 1956, 2026, 2096 };
+        private static bool officialMapsAvailable;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Bootstrap()
@@ -30,11 +31,31 @@ namespace Pythime
                 yield return null;
             }
 
+            officialMapsAvailable = HasOfficialMaps();
+            if (!officialMapsAvailable) yield break;
+
             ApplyOfficialMaps();
             DisableOldProceduralPolish();
             DisableOldBuildingColliders();
+            DisableRuntimeObject("PythimeAreaPolish");
+            DisableRuntimeObject("PythimeWorldDepth");
+            DisableRuntimeObject("PythimeWorldDensity");
+            DisableRuntimeObject("PythimeKenneyTilemapOverlay");
+            DisableRuntimeObject("PythimeNpcPopulation");
+            DisableRuntimeObject("PythimeNpcVisualVariation");
+            DisableRuntimeObject("PythimeSocialNpcGroups");
+            DisableRuntimeObject("PythimeWorkshopInterior");
+            BuildOfficialMapCollisions();
             MovePlayerToOfficialStart();
             PatchStoryTargets();
+            TuneCameraForOfficialMap();
+        }
+
+        private static bool HasOfficialMaps()
+        {
+            return Resources.Load<Texture2D>("OfficialMaps/city_1956") != null
+                || Resources.Load<Texture2D>("OfficialMaps/city_2026") != null
+                || Resources.Load<Texture2D>("OfficialMaps/city_2096") != null;
         }
 
         private static void ApplyOfficialMaps()
@@ -74,10 +95,6 @@ namespace Pythime
 
         private static void DisableOldProceduralPolish()
         {
-            DisableRoot("PythimeAreaPolish");
-            DisableRoot("PythimeWorldDepth");
-            DisableRoot("PythimeKenneyTilemapOverlay");
-
             foreach (var year in Years)
             {
                 var era = GameObject.Find("Era_" + year);
@@ -87,13 +104,13 @@ namespace Pythime
                 {
                     var child = era.transform.GetChild(i).gameObject;
                     var name = child.name;
-                    if (name.Contains("AreaPolish") || name.Contains("Kenney") || name.Contains("Depth") || name.Contains("StreetProp"))
+                    if (name.Contains("AreaPolish") || name.Contains("Kenney") || name.Contains("Depth") || name.Contains("StreetProp") || name.Contains("TemporalVehicle") || name.Contains("ImpossibleMonolith") || name.Contains("TemporalSoil"))
                         child.SetActive(false);
                 }
             }
         }
 
-        private static void DisableRoot(string name)
+        private static void DisableRuntimeObject(string name)
         {
             var go = GameObject.Find(name);
             if (go != null) go.SetActive(false);
@@ -117,12 +134,53 @@ namespace Pythime
             }
         }
 
+        private static void BuildOfficialMapCollisions()
+        {
+            foreach (var year in Years)
+            {
+                var era = GameObject.Find("Era_" + year);
+                if (era == null) continue;
+                if (era.transform.Find("OfficialMapCollision") != null) continue;
+
+                var root = new GameObject("OfficialMapCollision");
+                root.transform.SetParent(era.transform);
+                root.transform.localPosition = Vector3.zero;
+
+                AddCollider(root.transform, "NorthBuildings", 0f, 17.7f, 62f, 7.4f);
+                AddCollider(root.transform, "SouthBuildings", 0f, -20.0f, 62f, 5.0f);
+                AddCollider(root.transform, "WestBuildings", -27.9f, 0.2f, 7.6f, 32f);
+                AddCollider(root.transform, "EastBuildings", 27.9f, 0.2f, 7.6f, 32f);
+
+                AddCollider(root.transform, "CityHallBody", 0f, 7.9f, 10.8f, 7.0f);
+                AddCollider(root.transform, "CityHallSteps", 0f, 3.9f, 5.2f, 1.1f);
+                AddCollider(root.transform, "Fountain", 0f, -7.8f, 3.1f, 2.6f);
+                AddCollider(root.transform, "ParkNorthLeft", -8.0f, -4.0f, 3.0f, 2.2f);
+                AddCollider(root.transform, "ParkNorthRight", 8.0f, -4.0f, 3.0f, 2.2f);
+                AddCollider(root.transform, "ParkSouthLeft", -8.4f, -11.2f, 4.6f, 2.2f);
+                AddCollider(root.transform, "ParkSouthRight", 8.4f, -11.2f, 4.6f, 2.2f);
+
+                AddCollider(root.transform, "MapTop", 0f, 23.45f, 64f, 0.7f);
+                AddCollider(root.transform, "MapBottom", 0f, -23.45f, 64f, 0.7f);
+                AddCollider(root.transform, "MapLeft", -32.35f, 0f, 0.7f, 46f);
+                AddCollider(root.transform, "MapRight", 32.35f, 0f, 0.7f, 46f);
+            }
+        }
+
+        private static void AddCollider(Transform parent, string name, float x, float y, float width, float height)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(parent);
+            go.transform.localPosition = new Vector3(x, y, 0f);
+            var box = go.AddComponent<BoxCollider2D>();
+            box.size = new Vector2(width, height);
+        }
+
         private static void MovePlayerToOfficialStart()
         {
             var player = GameObject.Find("Player");
             if (player == null) return;
 
-            player.transform.position = StoryWorldFactory.TileToWorld(32f, 18.3f);
+            player.transform.position = StoryWorldFactory.TileToWorld(32f, 13.0f);
             var body = player.GetComponent<Rigidbody2D>();
             if (body != null) body.linearVelocity = Vector2.zero;
         }
@@ -141,6 +199,13 @@ namespace Pythime
 
             if (story.HasObjectiveTarget && story.ChapterStage <= 1)
                 SetPrivateVector(story, "objectiveTarget", InstituteDoor);
+        }
+
+        private static void TuneCameraForOfficialMap()
+        {
+            var camera = Camera.main;
+            if (camera == null) return;
+            camera.orthographicSize = 8.2f;
         }
 
         private static void SetPrivateVector(StoryDirector story, string fieldName, Vector2 value)
