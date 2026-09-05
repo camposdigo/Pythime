@@ -69,13 +69,16 @@ namespace Pythime
             var mapRenderer = map.AddComponent<SpriteRenderer>();
             mapRenderer.sprite = StoryWorldFactory.CreateTownMap(year);
             mapRenderer.sortingOrder = -50;
+            mapRenderer.color = year == 1956
+                ? new Color(1f, 0.93f, 0.80f, 1f)
+                : year == 2096
+                    ? new Color(0.78f, 0.90f, 1f, 1f)
+                    : Color.white;
 
-            for (var i = 0; i < StoryWorldFactory.BuildingRects.Count; i++)
-            {
-                if (!StoryWorldFactory.BuildingExistsInYear(i, year)) continue;
-                AddBuildingCollider(root.transform, StoryWorldFactory.BuildingRects[i]);
-            }
+            foreach (var rect in StoryWorldFactory.BuildingRects)
+                AddBuildingCollider(root.transform, rect);
 
+            EraLandmarkDecorator.Decorate(root.transform, year);
             BuildTemporalVehicle(root.transform, year);
 
             if (year == 2096)
