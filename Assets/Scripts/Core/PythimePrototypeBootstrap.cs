@@ -47,7 +47,15 @@ namespace Pythime
             var customizer = runtime.AddComponent<CharacterCustomizerOverlay>();
             customizer.Initialize(player);
 
-            runtime.AddComponent<PrototypeHUD>();
+            var beacon = runtime.AddComponent<ObjectiveBeacon>();
+            beacon.Initialize(player.transform, story);
+
+            var presentation = runtime.AddComponent<TimeShiftPresentation>();
+            presentation.Initialize(timeline);
+
+            var hud = runtime.AddComponent<PrototypeHUD>();
+            hud.Initialize(story, player.transform);
+
             runtime.AddComponent<PythonPuzzleConsole>();
         }
 
@@ -62,8 +70,11 @@ namespace Pythime
             mapRenderer.sprite = StoryWorldFactory.CreateTownMap(year);
             mapRenderer.sortingOrder = -50;
 
-            foreach (var rect in StoryWorldFactory.BuildingRects)
-                AddBuildingCollider(root.transform, rect);
+            for (var i = 0; i < StoryWorldFactory.BuildingRects.Count; i++)
+            {
+                if (!StoryWorldFactory.BuildingExistsInYear(i, year)) continue;
+                AddBuildingCollider(root.transform, StoryWorldFactory.BuildingRects[i]);
+            }
 
             BuildTemporalVehicle(root.transform, year);
 
