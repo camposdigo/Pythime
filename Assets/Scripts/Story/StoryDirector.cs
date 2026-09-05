@@ -17,18 +17,42 @@ namespace Pythime
         private string[] dialogueLines = Array.Empty<string>();
         private int dialogueIndex;
         private Action dialogueComplete;
-        private string objective = string.Empty;
+
+        private string objective = "Ouça Tock para entender o que aconteceu.";
+        private string objectiveStep = "PRÓLOGO";
+        private string objectiveTargetName = string.Empty;
+        private string contextHint = "ESPAÇO / ENTER  continuar   •   ESC  pular conversa";
         private string locationName = "Bairro Sul";
+        private Vector2 objectiveTarget;
+        private bool hasObjectiveTarget;
+        private int requiredYear;
 
         private GUIStyle dialogueNameStyle;
         private GUIStyle dialogueStyle;
-        private GUIStyle objectiveTitleStyle;
-        private GUIStyle objectiveStyle;
-        private GUIStyle locationStyle;
+        private GUIStyle dialogueHintStyle;
+        private Texture2D dialogueTexture;
 
+        public string MissionTitle => "O ECO IMPOSSÍVEL";
         public string Objective => objective;
+        public string ObjectiveStep => objectiveStep;
+        public string ObjectiveTargetName => objectiveTargetName;
+        public string ContextHint => contextHint;
+        public string LocationName => locationName;
         public bool ChapterComplete => chapterStage >= 5;
         public bool DialogueOpen => dialogueOpen;
+        public bool HasObjectiveTarget => hasObjectiveTarget;
+        public Vector2 ObjectiveTarget => objectiveTarget;
+        public int RequiredYear => requiredYear;
+        public int ChapterStage => chapterStage;
+
+        public float DistanceToObjective
+        {
+            get
+            {
+                if (!hasObjectiveTarget || player == null) return 0f;
+                return Vector2.Distance(player.position, objectiveTarget);
+            }
+        }
 
         public void Initialize(Transform playerTransform, Vector2 workshop, Vector2 soil, Vector2 monolith)
         {
@@ -39,17 +63,33 @@ namespace Pythime
             monolithPoint = monolith;
             chapterStage = 0;
 
+            SetObjective(
+                "PRÓLOGO",
+                "Ouça Tock para entender o que aconteceu.",
+                string.Empty,
+                Vector2.zero,
+                false,
+                0,
+                "ESPAÇO / ENTER  continuar   •   ESC  pular conversa");
+
             BeginDialogue(new[]
             {
                 "TOCK|Ei! Você tá me ouvindo? Ótimo. Isso já é melhor do que há trinta segundos.",
                 "TOCK|O impacto rasgou Pythime em três versões da mesma cidade.",
                 "TOCK|1956. 2026. 2096. Todas existem ao mesmo tempo e estão vazando umas nas outras.",
                 "TOCK|Sua máquina sobreviveu, mais ou menos. Mas o Chrono Core não.",
-                "TOCK|A Oficina Temporal, no extremo nordeste, pode ter um registro do que aconteceu. Vamos até lá."
+                "TOCK|Primeiro passo: chegar à Oficina Temporal. Siga o marcador amarelo no nordeste da cidade."
             }, () =>
             {
                 chapterStage = 1;
-                objective = "Chegue à Oficina Temporal no extremo nordeste de Pythime.";
+                SetObjective(
+                    "PASSO 1 DE 3",
+                    "Vá até a Oficina Temporal.",
+                    "OFICINA TEMPORAL",
+                    workshopPoint,
+                    true,
+                    2026,
+                    "SIGA O MARCADOR AMARELO");
             });
         }
 
@@ -62,6 +102,7 @@ namespace Pythime
 
             if (dialogueOpen)
             {
+                contextHint = "ESPAÇO / ENTER / X  continuar   •   ESC  pular conversa";
                 if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame)
                     SkipDialogue();
                 else if (keyboard != null && (keyboard.xKey.wasPressedThisFrame || keyboard.spaceKey.wasPressedThisFrame || keyboard.enterKey.wasPressedThisFrame))
@@ -73,6 +114,10 @@ namespace Pythime
 
             if (chapterStage == 1)
             {
+                requiredYear = 2026;
+                objective = "Vá até a Oficina Temporal.";
+                contextHint = "SIGA O MARCADOR AMARELO";
+
                 if (timeline.CurrentYear == 2026 && Vector2.Distance(player.position, workshopPoint) < 2.6f)
                 {
                     BeginDialogue(new[]
@@ -80,53 +125,84 @@ namespace Pythime
                         "TOCK|Achei o registro da Oficina. O Chrono Core não explodiu por acidente.",
                         "TOCK|Alguém ativou uma âncora temporal décadas antes de ela existir.",
                         "TOCK|O primeiro eco aparece em 1956, onde hoje fica a Praça do Relógio.",
-                        "TOCK|Volte para 1956. Procure o canteiro no parque a oeste da praça."
+                        "TOCK|Mude para 1956 e vá até o canteiro marcado no Parque Oeste."
                     }, () =>
                     {
                         chapterStage = 2;
-                        objective = "Viaje para 1956 e investigue o canteiro temporal no parque.";
+                        SetObjective(
+                            "PASSO 2 DE 3",
+                            "Mude para 1956 e investigue o canteiro temporal.",
+                            "CANTEIRO TEMPORAL",
+                            soilPoint,
+                            true,
+                            1956,
+                            "Q / E  MUDAR PARA 1956");
                     });
                 }
             }
             else if (chapterStage == 2)
             {
+                objectiveStep = "PASSO 2 DE 3";
+                requiredYear = 1956;
+                objectiveTargetName = "CANTEIRO TEMPORAL";
+                objectiveTarget = soilPoint;
+                hasObjectiveTarget = true;
+
                 if (timeline.SeedPlanted)
                 {
                     BeginDialogue(new[]
                     {
                         "TOCK|Você sentiu isso? A linha temporal acabou de se reorganizar.",
                         "TOCK|Uma mudança pequena em 1956 virou décadas de crescimento acumulado.",
-                        "TOCK|Agora precisamos ver o resultado final. Vá para 2096."
+                        "TOCK|Agora precisamos ver o resultado final. Mude para 2096 e siga o novo marcador."
                     }, () =>
                     {
                         chapterStage = 3;
-                        objective = "Viaje para 2096 e investigue o futuro alterado.";
+                        SetObjective(
+                            "PASSO 3 DE 3",
+                            "Mude para 2096 e investigue o monólito.",
+                            "ANOMALIA TEMPORAL",
+                            monolithPoint,
+                            true,
+                            2096,
+                            "Q / E  MUDAR PARA 2096");
                     });
                 }
-                else if (timeline.CurrentYear == 1956)
+                else if (timeline.CurrentYear != 1956)
                 {
-                    objective = Vector2.Distance(player.position, soilPoint) < 2.1f
-                        ? "Pressione T perto do canteiro para criar uma alteração na timeline."
-                        : "Encontre o canteiro temporal no parque, a oeste da Praça do Relógio.";
+                    objective = "Mude para 1956 e investigue o canteiro no Parque Oeste.";
+                    contextHint = "Q / E  MUDAR PARA 1956";
+                }
+                else if (Vector2.Distance(player.position, soilPoint) < 2.1f)
+                {
+                    objective = "Interaja com o canteiro temporal.";
+                    contextHint = "T  ALTERAR LINHA DO TEMPO";
                 }
                 else
                 {
-                    objective = "Viaje para 1956 usando Q/E e investigue a Praça do Relógio.";
+                    objective = "Vá até o canteiro temporal no Parque Oeste.";
+                    contextHint = "SIGA O MARCADOR AMARELO";
                 }
             }
             else if (chapterStage == 3)
             {
+                objectiveStep = "PASSO 3 DE 3";
+                requiredYear = 2096;
+                objectiveTargetName = "ANOMALIA TEMPORAL";
+                objectiveTarget = monolithPoint;
+                hasObjectiveTarget = true;
+
                 if (timeline.CurrentYear != 2096)
                 {
-                    objective = "Viaje para 2096 e procure a origem da anomalia.";
+                    objective = "Mude para 2096 e investigue o monólito.";
+                    contextHint = "Q / E  MUDAR PARA 2096";
                 }
-                else
+                else if (Vector2.Distance(player.position, monolithPoint) < 2.4f)
                 {
-                    objective = Vector2.Distance(player.position, monolithPoint) < 2.4f
-                        ? "Pressione F para inspecionar o monólito temporal."
-                        : "Siga para o monólito ao nordeste da Praça do Relógio.";
+                    objective = "Inspecione o monólito temporal.";
+                    contextHint = "F  INSPECIONAR ANOMALIA";
 
-                    if (keyboard != null && keyboard.fKey.wasPressedThisFrame && Vector2.Distance(player.position, monolithPoint) < 2.4f)
+                    if (keyboard != null && keyboard.fKey.wasPressedThisFrame)
                     {
                         BeginDialogue(new[]
                         {
@@ -138,11 +214,41 @@ namespace Pythime
                         }, () =>
                         {
                             chapterStage = 5;
-                            objective = "CAPÍTULO 1 CONCLUÍDO — O Eco Impossível";
+                            SetObjective(
+                                "CAPÍTULO CONCLUÍDO",
+                                "O Eco Impossível concluído.",
+                                string.Empty,
+                                Vector2.zero,
+                                false,
+                                0,
+                                "Explore Pythime ou use Q / E para comparar as épocas.");
                         });
                     }
                 }
+                else
+                {
+                    objective = "Vá até o monólito no nordeste da Praça do Relógio.";
+                    contextHint = "SIGA O MARCADOR AMARELO";
+                }
             }
+        }
+
+        private void SetObjective(
+            string step,
+            string text,
+            string targetName,
+            Vector2 target,
+            bool showTarget,
+            int targetYear,
+            string hint)
+        {
+            objectiveStep = step;
+            objective = text;
+            objectiveTargetName = targetName;
+            objectiveTarget = target;
+            hasObjectiveTarget = showTarget;
+            requiredYear = targetYear;
+            contextHint = hint;
         }
 
         private void BeginDialogue(string[] lines, Action onComplete)
@@ -152,7 +258,7 @@ namespace Pythime
             dialogueIndex = 0;
             dialogueComplete = onComplete;
             dialogueOpen = true;
-            if (playerBody != null && playerBody.linearVelocity.sqrMagnitude < 0.01f)
+            if (playerBody != null)
                 playerBody.linearVelocity = Vector2.zero;
         }
 
@@ -196,67 +302,59 @@ namespace Pythime
         {
             if (dialogueStyle != null) return;
 
+            dialogueTexture = MakeTexture(new Color32(17, 21, 27, 245));
+
             dialogueNameStyle = new GUIStyle(GUI.skin.label)
             {
-                fontSize = 18,
+                fontSize = 19,
                 fontStyle = FontStyle.Bold
             };
             dialogueNameStyle.normal.textColor = new Color(0.35f, 0.95f, 1f);
 
             dialogueStyle = new GUIStyle(GUI.skin.label)
             {
-                fontSize = 16,
+                fontSize = 17,
                 wordWrap = true
             };
             dialogueStyle.normal.textColor = Color.white;
 
-            objectiveTitleStyle = new GUIStyle(GUI.skin.label)
+            dialogueHintStyle = new GUIStyle(GUI.skin.label)
             {
-                fontSize = 13,
-                fontStyle = FontStyle.Bold
+                fontSize = 12,
+                fontStyle = FontStyle.Bold,
+                alignment = TextAnchor.MiddleRight
             };
-            objectiveTitleStyle.normal.textColor = new Color(1f, 0.80f, 0.24f);
-
-            objectiveStyle = new GUIStyle(GUI.skin.label)
-            {
-                fontSize = 14,
-                wordWrap = true
-            };
-            objectiveStyle.normal.textColor = Color.white;
-
-            locationStyle = new GUIStyle(GUI.skin.label)
-            {
-                fontSize = 13,
-                alignment = TextAnchor.MiddleCenter,
-                fontStyle = FontStyle.Bold
-            };
-            locationStyle.normal.textColor = new Color(0.92f, 0.95f, 0.98f);
+            dialogueHintStyle.normal.textColor = new Color(1f, 0.82f, 0.30f);
         }
 
         private void OnGUI()
         {
-            BuildStyles();
-
-            GUI.Box(new Rect(Screen.width - 390, 20, 365, 86), string.Empty);
-            GUI.Label(new Rect(Screen.width - 372, 30, 330, 22), "OBJETIVO", objectiveTitleStyle);
-            GUI.Label(new Rect(Screen.width - 372, 52, 330, 48), objective, objectiveStyle);
-
-            GUI.Box(new Rect(Screen.width / 2f - 105, 18, 210, 32), string.Empty);
-            GUI.Label(new Rect(Screen.width / 2f - 95, 20, 190, 27), locationName, locationStyle);
-
             if (!dialogueOpen || dialogueLines.Length == 0) return;
+            BuildStyles();
 
             var raw = dialogueLines[Mathf.Clamp(dialogueIndex, 0, dialogueLines.Length - 1)];
             var split = raw.Split(new[] { '|' }, 2);
-            var speaker = split.Length > 1 ? split[0] : "";
+            var speaker = split.Length > 1 ? split[0] : string.Empty;
             var text = split.Length > 1 ? split[1] : raw;
 
-            var boxHeight = 150f;
-            var y = Screen.height - boxHeight - 24f;
-            GUI.Box(new Rect(60, y, Screen.width - 120, boxHeight), string.Empty);
-            GUI.Label(new Rect(86, y + 18, 180, 28), speaker, dialogueNameStyle);
-            GUI.Label(new Rect(86, y + 50, Screen.width - 172, 64), text, dialogueStyle);
-            GUI.Label(new Rect(Screen.width - 470, y + 116, 380, 24), "ESPAÇO/ENTER/X continua   •   ESC pula a conversa", objectiveTitleStyle);
+            var width = Mathf.Min(Screen.width - 80f, 940f);
+            var height = 158f;
+            var x = (Screen.width - width) * 0.5f;
+            var y = Screen.height - height - 24f;
+
+            GUI.DrawTexture(new Rect(x, y, width, height), dialogueTexture);
+            GUI.Label(new Rect(x + 24, y + 16, 180, 28), speaker, dialogueNameStyle);
+            GUI.Label(new Rect(x + 24, y + 50, width - 48, 70), text, dialogueStyle);
+            GUI.Label(new Rect(x + width - 430, y + 124, 406, 22),
+                "ESPAÇO / ENTER / X continua   •   ESC pula", dialogueHintStyle);
+        }
+
+        private static Texture2D MakeTexture(Color32 color)
+        {
+            var texture = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+            texture.SetPixel(0, 0, color);
+            texture.Apply(false, true);
+            return texture;
         }
     }
 }
