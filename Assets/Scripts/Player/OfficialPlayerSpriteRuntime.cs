@@ -3,12 +3,17 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
+
 namespace Pythime
 {
     [DefaultExecutionOrder(-2000)]
     public sealed class OfficialPlayerSpriteRuntime : MonoBehaviour
     {
         private const string ResourcePath = "Characters/player_marty_sheet";
+        private const string AssetPath = "Assets/Resources/Characters/player_marty_sheet.png";
         private const string DiskRelativePath = "Resources/Characters/player_marty_sheet.png";
         private const int Columns = 4;
         private const int Rows = 5;
@@ -95,7 +100,7 @@ namespace Pythime
                 if (customizer != null) customizer.enabled = false;
             }
 
-            target.transform.localScale = Vector3.one * 1.25f;
+            target.transform.localScale = Vector3.one * 1.35f;
             lastPosition = player.position;
             ApplyIdle();
             Debug.Log($"Pythime: player oficial carregado com sucesso ({texture.width}x{texture.height}).");
@@ -103,6 +108,12 @@ namespace Pythime
 
         private static Texture2D LoadPlayerTexture()
         {
+#if UNITY_EDITOR
+            var editorTexture = LoadFromAssetDatabase();
+            if (editorTexture != null)
+                return editorTexture;
+#endif
+
             var directTexture = Resources.Load<Texture2D>(ResourcePath);
             if (directTexture != null)
                 return directTexture;
@@ -123,10 +134,54 @@ namespace Pythime
                     return candidate.texture;
             }
 
-            var diskPath = Path.Combine(Application.dataPath, DiskRelativePath.Replace('/', Path.DirectorySeparatorChar));
-            if (File.Exists(diskPath))
+            var diskTexture = LoadFromDisk();
+            if (diskTexture != null)
+                return diskTexture;
+
+            DebugAvailableCharacterResources(GetExpectedDiskPath());
+            return null;
+        }
+
+#if UNITY_EDITOR
+        private static Texture2D LoadFromAssetDatabase()
+        {
+            if (!File.Exists(GetExpectedDiskPath()))
+                return null;
+
+            AssetDatabase.ImportAsset(AssetPath, ImportAssetOptions.ForceUpdate);
+
+            var texture = AssetDatabase.LoadAssetAtPath<Texture2D>(AssetPath);
+            if (texture != null)
+                return texture;
+
+            var sprite = AssetDatabase.LoadAssetAtPath<Sprite>(AssetPath);
+            if (sprite != null && sprite.texture != null)
+                return sprite.texture;
+
+            var allAssets = AssetDatabase.LoadAllAssetsAtPath(AssetPath);
+            foreach (var asset in allAssets)
             {
-                var bytes = File.ReadAllBytes(diskPath);
+                if (asset is Texture2D textureAsset)
+                    return textureAsset;
+
+                if (asset is Sprite spriteAsset && spriteAsset.texture != null)
+                    return spriteAsset.texture;
+            }
+
+            return null;
+        }
+#endif
+
+        private static Texture2D LoadFromDisk()
+        {
+            var diskPath = GetExpectedDiskPath();
+            var foundPath = File.Exists(diskPath) ? diskPath : FindSpriteOnDisk();
+            if (string.IsNullOrEmpty(foundPath) || !File.Exists(foundPath))
+                return null;
+
+            try
+            {
+                var bytes = File.ReadAllBytes(foundPath);
                 var texture = new Texture2D(2, 2, TextureFormat.RGBA32, false)
                 {
                     name = "player_marty_sheet_disk",
@@ -136,10 +191,43 @@ namespace Pythime
 
                 if (texture.LoadImage(bytes, false))
                     return texture;
+
+                Debug.LogWarning($"Pythime: achei o PNG em disco, mas LoadImage falhou. Caminho: {foundPath} | Bytes: {bytes.Length} | Assinatura: {GetSignature(bytes)}");
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogWarning($"Pythime: erro lendo player_marty_sheet.png do disco: {ex.Message}");
             }
 
-            DebugAvailableCharacterResources(diskPath);
             return null;
+        }
+
+        private static string FindSpriteOnDisk()
+        {
+            try
+            {
+                var matches = Directory.GetFiles(Application.dataPath, "player_marty_sheet.png", SearchOption.AllDirectories);
+                return matches != null && matches.Length > 0 ? matches[0] : null;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static string GetExpectedDiskPath()
+        {
+            return Path.Combine(Application.dataPath, DiskRelativePath.Replace('/', Path.DirectorySeparatorChar));
+        }
+
+        private static string GetSignature(byte[] bytes)
+        {
+            if (bytes == null || bytes.Length == 0) return "vazio";
+            var count = Mathf.Min(bytes.Length, 8);
+            var parts = new string[count];
+            for (var i = 0; i < count; i++)
+                parts[i] = bytes[i].ToString("X2");
+            return string.Join(" ", parts);
         }
 
         private static void DebugAvailableCharacterResources(string diskPath)
@@ -148,7 +236,7 @@ namespace Pythime
             var sprites = Resources.LoadAll<Sprite>("Characters");
             var textureNames = textures == null || textures.Length == 0 ? "nenhuma texture" : string.Join(", ", System.Array.ConvertAll(textures, t => t != null ? t.name : "null"));
             var spriteNames = sprites == null || sprites.Length == 0 ? "nenhum sprite" : string.Join(", ", System.Array.ConvertAll(sprites, s => s != null ? s.name : "null"));
-            Debug.LogWarning($"Pythime: Resources/Characters encontrados -> Textures: {textureNames} | Sprites: {spriteNames} | Disco esperado: {diskPath} | Existe no disco: {File.Exists(diskPath)}");
+            Debug.LogWarning($"Pythime: Resources/Characters encontrados -> Textures: {textureNames} | Sprites: {spriteNames} | Disco esperado: {diskPath} | Existe no disco: {File.Exists(diskPath)} | Busca recursiva: {FindSpriteOnDisk() ?? "não achou"}");
         }
 
         private void Update()
