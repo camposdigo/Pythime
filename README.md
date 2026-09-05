@@ -4,25 +4,26 @@ Pythime é um jogo 2D top-down em Unity sobre exploração, viagem no tempo e pr
 
 ## Conceito
 
-O jogador explora o mesmo lugar em épocas diferentes. Mudanças feitas no passado alteram objetos, caminhos e situações no presente e no futuro. A máquina temporal também se adapta visualmente à época.
+O jogador explora a mesma cidade em épocas diferentes. Mudanças feitas no passado alteram objetos, caminhos e situações no presente e no futuro. A máquina temporal também se adapta visualmente à época.
 
-A direção visual pretendida é cartunesca, legível e charmosa, inspirada na clareza de jogos top-down 2D, sem copiar personagens, cenários ou assets de outras obras.
+A direção visual é pixel-art cartunesca, legível e charmosa, inspirada na clareza de jogos top-down 2D, sem copiar personagens, cenários ou assets proprietários de outras obras.
 
-## Protótipo atual
+## Capítulo 1 — O Eco Impossível
 
-O protótipo é criado em runtime ao apertar Play. Não é necessário montar Player, câmera ou eras manualmente na SampleScene.
+O protótipo agora começa como uma pequena campanha jogável. Pythime foi rasgada em três versões temporais — 1956, 2026 e 2096 — e Tock, o companheiro temporal do jogador, guia a investigação sobre o que destruiu o Chrono Core.
 
-Inclui:
+O primeiro capítulo inclui:
 
-- movimento top-down com colisão;
-- câmera suave seguindo o jogador;
-- três épocas: 1956, 2026 e 2096;
-- troca instantânea de timeline;
-- cidade simples com diferenças visuais entre épocas;
-- veículo temporal adaptado a cada era;
-- consequência temporal demonstrável com uma semente plantada em 1956;
-- customização provisória do personagem;
-- PyTerminal com comandos de sintaxe Python para testar a ideia de programação integrada ao mundo.
+- introdução com diálogos;
+- Tock acompanhando o jogador pelo mapa;
+- objetivo principal e localização atual na HUD;
+- mapa aproximadamente quatro vezes maior que a primeira versão;
+- distritos, parque, estação, praça central, oficina e bairros residenciais;
+- máquina temporal retrofuturista com visual diferente por época;
+- primeira cadeia de missão temporal;
+- consequência de uma alteração feita em 1956;
+- investigação de uma anomalia em 2096;
+- gancho narrativo para um segundo viajante do tempo.
 
 ## Controles
 
@@ -32,8 +33,10 @@ Inclui:
 | Q / E | época anterior / próxima |
 | C | trocar cor da roupa |
 | H | trocar cabelo |
-| T | plantar/remover a semente no canteiro em 1956 |
+| T | ação temporal no canteiro em 1956 |
+| F | interagir / inspecionar |
 | P | abrir/fechar PyTerminal |
+| Espaço / Enter | avançar diálogos |
 
 ## PyTerminal
 
@@ -51,22 +54,27 @@ help()
 
 O terminal atual é um parser seguro de comandos Python-like para validar a mecânica. Ele ainda não executa Python arbitrário. Uma futura versão pode usar uma sandbox própria para desafios reais.
 
-## Como testar esta branch
+## Como testar
 
 ```bash
-git checkout feature/playable-prototype
 git pull
 ```
 
 Abra o projeto no Unity 6000.5.7f1, abra `Assets/Scenes/SampleScene.unity` e aperte Play.
 
+O protótipo é criado em runtime. Não é necessário montar Player, câmera, mapas ou eras manualmente.
+
+## Arte externa
+
+O projeto mantém suporte ao Kenney RPG Urban Pack (CC0) para referências e assets urbanos livres. Consulte `docs/THIRD_PARTY_ART.md`.
+
 ## Próximos passos
 
-1. substituir formas provisórias por sprites originais e animações;
+1. transformar os distritos em Tilemaps editáveis e interiores exploráveis;
 2. criar Character Creator completo por camadas;
-3. transformar as três épocas em mapas Tilemap reais;
-4. adicionar NPCs e interiores exploráveis;
-5. adicionar inventário e objetos persistentes entre eras;
-6. construir puzzles temporais maiores;
-7. evoluir PyTerminal para desafios de Python reais em ambiente controlado;
-8. adicionar save/load de timeline e customização.
+3. adicionar NPCs com rotinas diferentes em cada época;
+4. adicionar inventário e objetos persistentes entre eras;
+5. construir puzzles temporais que modifiquem partes inteiras da cidade;
+6. evoluir PyTerminal para desafios de Python reais em ambiente controlado;
+7. adicionar save/load de timeline, escolhas e customização;
+8. produzir capítulos seguintes da história.

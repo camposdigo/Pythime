@@ -25,20 +25,24 @@ namespace Pythime
 
             var player = BuildPlayer(runtime.transform);
             SetupCamera(player.transform);
+            BuildTock(runtime.transform, player.transform);
 
-            var patchPosition = new Vector2(-5.5f, 4.25f);
-            CreateSoilPatch(world1956.transform, patchPosition);
+            var soilPoint = StoryWorldFactory.SoilPoint;
+            CreateSoilPatch(world1956.transform, soilPoint);
 
-            var seedling = BuildTemporalTree(world1956.transform, "Seedling_1956", patchPosition, 1956, false);
-            var tree2026 = BuildTemporalTree(world2026.transform, "Tree_2026", patchPosition, 2026, true);
-            var tree2096 = BuildTemporalTree(world2096.transform, "Tree_2096", patchPosition, 2096, true);
+            var seedling = BuildTemporalTree(world1956.transform, "Seedling_1956", soilPoint, 1956, false);
+            var tree2026 = BuildTemporalTree(world2026.transform, "Tree_2026", soilPoint, 2026, true);
+            var tree2096 = BuildTemporalTree(world2096.transform, "Tree_2096", soilPoint, 2096, true);
 
             seedling.SetActive(false);
             tree2026.SetActive(false);
             tree2096.SetActive(false);
 
-            timeline.ConfigureTemporalSeed(player.transform, patchPosition, seedling, tree2026, tree2096);
+            timeline.ConfigureTemporalSeed(player.transform, soilPoint, seedling, tree2026, tree2096);
             timeline.SetInitialYear(2026);
+
+            var story = runtime.AddComponent<StoryDirector>();
+            story.Initialize(player.transform, StoryWorldFactory.WorkshopPoint, soilPoint, StoryWorldFactory.MonolithPoint);
 
             runtime.AddComponent<PrototypeHUD>();
             runtime.AddComponent<PythonPuzzleConsole>();
@@ -49,63 +53,29 @@ namespace Pythime
             var root = new GameObject($"Era_{year}");
             root.transform.SetParent(parent);
 
-            if (!TryBuildKenneyWorld(root.transform, year))
-            {
-                var map = new GameObject($"PixelTown_{year}");
-                map.transform.SetParent(root.transform);
-                var mapRenderer = map.AddComponent<SpriteRenderer>();
-                mapRenderer.sprite = PixelArtFactory.CreateTownMap(year);
-                mapRenderer.sortingOrder = -20;
+            var map = new GameObject($"PythimeCity_{year}");
+            map.transform.SetParent(root.transform);
+            var mapRenderer = map.AddComponent<SpriteRenderer>();
+            mapRenderer.sprite = StoryWorldFactory.CreateTownMap(year);
+            mapRenderer.sortingOrder = -50;
 
-                AddBuildingCollider(root.transform, 2, 15, 8, 6);
-                AddBuildingCollider(root.transform, 12, 15, 7, 6);
-                AddBuildingCollider(root.transform, 2, 1, 8, 5);
-                AddBuildingCollider(root.transform, 12, 1, 7, 5);
-                AddBuildingCollider(root.transform, 27, 15, 4, 6);
-                AddBuildingCollider(root.transform, 27, 1, 4, 5);
-            }
+            foreach (var rect in StoryWorldFactory.BuildingRects)
+                AddBuildingCollider(root.transform, rect);
+
+            BuildTemporalVehicle(root.transform, year);
+
+            if (year == 2096)
+                BuildMonolith(root.transform, year);
 
             AddMapBounds(root.transform);
             return root;
-        }
-
-        private static bool TryBuildKenneyWorld(Transform parent, int year)
-        {
-            var texture = Resources.Load<Texture2D>("PythimeArt/KenneyRPGUrban/Sample");
-            if (texture == null || texture.width < 32 || texture.height < 32) return false;
-
-            var cropBottom = Mathf.Min(24, Mathf.Max(0, texture.height / 18));
-            var rect = new Rect(0, cropBottom, texture.width, texture.height - cropBottom);
-            var sprite = Sprite.Create(texture, rect, new Vector2(0.5f, 0.5f), 16f, 0, SpriteMeshType.FullRect);
-            sprite.name = $"KenneyUrbanReference_{year}";
-
-            var map = new GameObject($"CC0UrbanTown_{year}");
-            map.transform.SetParent(parent);
-            var renderer = map.AddComponent<SpriteRenderer>();
-            renderer.sprite = sprite;
-            renderer.sortingOrder = -20;
-
-            var size = sprite.bounds.size;
-            map.transform.localScale = new Vector3(
-                PixelArtFactory.MapWidthTiles / Mathf.Max(0.01f, size.x),
-                PixelArtFactory.MapHeightTiles / Mathf.Max(0.01f, size.y),
-                1f);
-
-            renderer.color = year switch
-            {
-                1956 => new Color(1f, 0.90f, 0.77f, 1f),
-                2096 => new Color(0.72f, 0.89f, 1f, 1f),
-                _ => Color.white
-            };
-
-            return true;
         }
 
         private static GameObject BuildPlayer(Transform parent)
         {
             var player = new GameObject("Player");
             player.transform.SetParent(parent);
-            player.transform.position = new Vector3(-5f, -0.7f, 0f);
+            player.transform.position = StoryWorldFactory.StartPoint;
 
             var body = player.AddComponent<Rigidbody2D>();
             body.gravityScale = 0f;
@@ -136,6 +106,46 @@ namespace Pythime
             return player;
         }
 
+        private static void BuildTock(Transform parent, Transform player)
+        {
+            var tock = new GameObject("Tock");
+            tock.transform.SetParent(parent);
+            tock.transform.position = player.position + new Vector3(0.8f, 0.8f, 0f);
+            var renderer = tock.AddComponent<SpriteRenderer>();
+            renderer.sprite = StoryWorldFactory.CreateTockSprite();
+            renderer.sortingOrder = 30;
+            var follower = tock.AddComponent<TockFollower>();
+            follower.Initialize(player);
+        }
+
+        private static void BuildTemporalVehicle(Transform parent, int year)
+        {
+            var vehicle = new GameObject($"TemporalVehicle_{year}");
+            vehicle.transform.SetParent(parent);
+            vehicle.transform.localPosition = StoryWorldFactory.VehiclePoint;
+            var renderer = vehicle.AddComponent<SpriteRenderer>();
+            renderer.sprite = StoryWorldFactory.CreateTemporalVehicleSprite(year);
+            renderer.sortingOrder = 12;
+
+            var collider = vehicle.AddComponent<BoxCollider2D>();
+            collider.size = new Vector2(3.2f, 1.4f);
+            collider.offset = new Vector2(0f, 0.45f);
+        }
+
+        private static void BuildMonolith(Transform parent, int year)
+        {
+            var monolith = new GameObject("ImpossibleMonolith");
+            monolith.transform.SetParent(parent);
+            monolith.transform.localPosition = StoryWorldFactory.MonolithPoint;
+            var renderer = monolith.AddComponent<SpriteRenderer>();
+            renderer.sprite = StoryWorldFactory.CreateMonolithSprite(year);
+            renderer.sortingOrder = 15;
+
+            var collider = monolith.AddComponent<BoxCollider2D>();
+            collider.size = new Vector2(0.8f, 1.35f);
+            collider.offset = new Vector2(0f, 0.65f);
+        }
+
         private static void SetupCamera(Transform player)
         {
             var camera = Camera.main;
@@ -147,7 +157,7 @@ namespace Pythime
             }
 
             camera.orthographic = true;
-            camera.orthographicSize = 5.4f;
+            camera.orthographicSize = 6.3f;
             camera.backgroundColor = new Color32(24, 27, 31, 255);
             camera.transform.position = new Vector3(player.position.x, player.position.y, -10f);
 
@@ -163,7 +173,7 @@ namespace Pythime
             tree.transform.localPosition = position;
             var renderer = tree.AddComponent<SpriteRenderer>();
             renderer.sprite = PixelArtFactory.CreateTreeSprite(year, grown);
-            renderer.sortingOrder = 12;
+            renderer.sortingOrder = 13;
 
             if (grown)
             {
@@ -177,7 +187,7 @@ namespace Pythime
 
         private static void CreateSoilPatch(Transform parent, Vector2 position)
         {
-            var texture = new Texture2D(16, 16, TextureFormat.RGBA32, false)
+            var texture = new Texture2D(24, 20, TextureFormat.RGBA32, false)
             {
                 filterMode = FilterMode.Point,
                 wrapMode = TextureWrapMode.Clamp,
@@ -186,52 +196,52 @@ namespace Pythime
 
             var clear = new Color32(0, 0, 0, 0);
             var dirt = new Color32(105, 67, 38, 255);
-            var dirtLight = new Color32(137, 91, 50, 255);
-            var pixels = new Color32[256];
+            var dirtLight = new Color32(151, 102, 58, 255);
+            var edge = new Color32(56, 48, 39, 255);
+            var pixels = new Color32[texture.width * texture.height];
             for (var i = 0; i < pixels.Length; i++) pixels[i] = clear;
             texture.SetPixels32(pixels);
 
-            for (var y = 4; y < 12; y++)
-            for (var x = 2; x < 14; x++)
-                texture.SetPixel(x, y, ((x + y) % 4 == 0) ? dirtLight : dirt);
-
-            texture.SetPixel(1, 7, dirt);
-            texture.SetPixel(14, 8, dirt);
+            for (var y = 3; y < 17; y++)
+            for (var x = 2; x < 22; x++)
+            {
+                var border = x == 2 || x == 21 || y == 3 || y == 16;
+                texture.SetPixel(x, y, border ? edge : ((x + y) % 5 == 0 ? dirtLight : dirt));
+            }
             texture.Apply(false, false);
 
-            var sprite = Sprite.Create(texture, new Rect(0, 0, 16, 16), new Vector2(0.5f, 0.5f), 16f);
+            var sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f), 16f);
             var patch = new GameObject("TemporalSoilPatch");
             patch.transform.SetParent(parent);
             patch.transform.localPosition = position;
             var renderer = patch.AddComponent<SpriteRenderer>();
             renderer.sprite = sprite;
-            renderer.sortingOrder = 2;
+            renderer.sortingOrder = 3;
         }
 
-        private static void AddBuildingCollider(Transform parent, int tx, int ty, int tw, int th)
+        private static void AddBuildingCollider(Transform parent, RectInt rect)
         {
-            var colliderObject = new GameObject($"BuildingCollider_{tx}_{ty}");
+            var colliderObject = new GameObject($"BuildingCollider_{rect.x}_{rect.y}");
             colliderObject.transform.SetParent(parent);
-
-            var lowerLeftX = -PixelArtFactory.MapWidthTiles / 2f;
-            var lowerLeftY = -PixelArtFactory.MapHeightTiles / 2f;
+            var lowerLeftX = -StoryWorldFactory.MapWidthTiles / 2f;
+            var lowerLeftY = -StoryWorldFactory.MapHeightTiles / 2f;
             colliderObject.transform.localPosition = new Vector3(
-                lowerLeftX + tx + tw / 2f,
-                lowerLeftY + ty + th / 2f,
+                lowerLeftX + rect.x + rect.width / 2f,
+                lowerLeftY + rect.y + rect.height / 2f,
                 0f);
 
             var collider = colliderObject.AddComponent<BoxCollider2D>();
-            collider.size = new Vector2(tw - 0.1f, th - 0.1f);
+            collider.size = new Vector2(rect.width - 0.1f, rect.height - 0.1f);
         }
 
         private static void AddMapBounds(Transform parent)
         {
-            var halfW = PixelArtFactory.MapWidthTiles / 2f;
-            var halfH = PixelArtFactory.MapHeightTiles / 2f;
-            AddWall(parent, new Vector2(0f, halfH + 0.25f), new Vector2(PixelArtFactory.MapWidthTiles + 1f, 0.5f));
-            AddWall(parent, new Vector2(0f, -halfH - 0.25f), new Vector2(PixelArtFactory.MapWidthTiles + 1f, 0.5f));
-            AddWall(parent, new Vector2(halfW + 0.25f, 0f), new Vector2(0.5f, PixelArtFactory.MapHeightTiles + 1f));
-            AddWall(parent, new Vector2(-halfW - 0.25f, 0f), new Vector2(0.5f, PixelArtFactory.MapHeightTiles + 1f));
+            var halfW = StoryWorldFactory.MapWidthTiles / 2f;
+            var halfH = StoryWorldFactory.MapHeightTiles / 2f;
+            AddWall(parent, new Vector2(0f, halfH + 0.25f), new Vector2(StoryWorldFactory.MapWidthTiles + 1f, 0.5f));
+            AddWall(parent, new Vector2(0f, -halfH - 0.25f), new Vector2(StoryWorldFactory.MapWidthTiles + 1f, 0.5f));
+            AddWall(parent, new Vector2(halfW + 0.25f, 0f), new Vector2(0.5f, StoryWorldFactory.MapHeightTiles + 1f));
+            AddWall(parent, new Vector2(-halfW - 0.25f, 0f), new Vector2(0.5f, StoryWorldFactory.MapHeightTiles + 1f));
         }
 
         private static void AddWall(Transform parent, Vector2 position, Vector2 size)
