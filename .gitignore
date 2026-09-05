@@ -19,9 +19,8 @@
 *.opendb
 *.VC.db
 
-Assets/ThirdParty/KenneyRPGUrban/
-Assets/ThirdParty.meta
-Assets/ThirdParty/KenneyRPGUrban.meta
+Assets/Resources/PythimeArt/KenneyRPGUrban/
+Assets/Resources/PythimeArt/KenneyRPGUrban.meta
 
 .DS_Store
 Thumbs.db
