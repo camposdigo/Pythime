@@ -8,7 +8,7 @@ namespace Pythime
         private PlayerVisual visual;
         private PlayerController controller;
         private bool open;
-        private Rect windowRect = new Rect(24f, 126f, 420f, 500f);
+        private Rect windowRect = new Rect(24f, 126f, 420f, 540f);
         private GUIStyle headerStyle;
         private GUIStyle hintStyle;
 
