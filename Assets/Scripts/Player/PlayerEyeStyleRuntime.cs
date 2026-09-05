@@ -11,6 +11,7 @@ namespace Pythime
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Bootstrap()
         {
+            if (EmbeddedArtLoader.HasAsset("player_marty_sheet")) return;
             if (GameObject.Find("PythimePlayerEyeStyle") != null) return;
             var root = new GameObject("PythimePlayerEyeStyle");
             root.AddComponent<PlayerEyeStyleRuntime>();
