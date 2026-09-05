@@ -10,6 +10,7 @@ namespace Pythime
         private bool visible = true;
         private GUIStyle titleStyle;
         private GUIStyle smallStyle;
+        private GUIStyle mapLabelStyle;
         private Texture2D panel;
         private Texture2D mapBackground;
 
@@ -19,6 +20,11 @@ namespace Pythime
             if (GameObject.Find("PythimeMinimap") != null) return;
             var go = new GameObject("PythimeMinimap");
             go.AddComponent<MinimapHUD>();
+        }
+
+        private void OnEnable()
+        {
+            visible = true;
         }
 
         private void Update()
@@ -43,30 +49,31 @@ namespace Pythime
         {
             if (!visible || player == null) return;
             BuildStyles();
+            GUI.depth = -30;
 
-            var scale = Mathf.Clamp(Screen.height / 1440f, 0.85f, 1.25f);
-            var width = 250f * scale;
-            var height = 184f * scale;
+            var scale = Mathf.Clamp(Screen.height / 1440f, 0.9f, 1.3f);
+            var width = 294f * scale;
+            var height = 220f * scale;
             var x = Screen.width - width - 18f * scale;
-            var y = 198f * scale;
+            var y = 194f * scale;
             var outer = new Rect(x, y, width, height);
-            var inner = new Rect(x + 10f * scale, y + 34f * scale, width - 20f * scale, height - 46f * scale);
+            var inner = new Rect(x + 11f * scale, y + 38f * scale, width - 22f * scale, height - 58f * scale);
 
             GUI.DrawTexture(outer, panel);
-            DrawHeader(new Rect(x + 10f * scale, y + 7f * scale, width - 20f * scale, 24f * scale), scale);
-            DrawMap(inner);
+            DrawHeader(new Rect(x + 12f * scale, y + 8f * scale, width - 24f * scale, 26f * scale), scale);
+            DrawMap(inner, scale);
             DrawLegend(new Rect(x + 12f * scale, y + height - 18f * scale, width - 24f * scale, 14f * scale), scale);
         }
 
         private void DrawHeader(Rect rect, float scale)
         {
-            titleStyle.fontSize = Mathf.RoundToInt(13f * scale);
+            titleStyle.fontSize = Mathf.RoundToInt(14f * scale);
             smallStyle.fontSize = Mathf.RoundToInt(10f * scale);
-            GUI.Label(new Rect(rect.x, rect.y, 130f * scale, rect.height), "MINIMAPA", titleStyle);
-            GUI.Label(new Rect(rect.x + rect.width - 76f * scale, rect.y, 76f * scale, rect.height), "M ocultar", smallStyle);
+            GUI.Label(new Rect(rect.x, rect.y, 160f * scale, rect.height), "MAPA DE PYTHIME", titleStyle);
+            GUI.Label(new Rect(rect.x + rect.width - 82f * scale, rect.y, 82f * scale, rect.height), "M ocultar", smallStyle);
         }
 
-        private void DrawMap(Rect rect)
+        private void DrawMap(Rect rect, float scale)
         {
             var timeline = TimeTravelManager.Instance;
             var currentYear = timeline != null ? timeline.CurrentYear : 2026;
@@ -81,23 +88,27 @@ namespace Pythime
             DrawRoad(rect, new Rect(0f, 0.42f, 1f, 0.18f));
             DrawRoad(rect, new Rect(0f, 0.18f, 1f, 0.07f));
 
-            DrawLandmark(rect, StoryWorldFactory.WorkshopPoint, new Color(0.76f, 0.78f, 0.82f), 5f, false);
-            DrawLandmark(rect, StoryWorldFactory.ClockPlazaPoint, new Color(0.42f, 0.70f, 0.80f), 5f, false);
-            DrawLandmark(rect, StoryWorldFactory.VehiclePoint, new Color(0.35f, 0.91f, 1f), 6f, false);
+            DrawLandmark(rect, StoryWorldFactory.WorkshopPoint, new Color(0.76f, 0.78f, 0.82f), 6f * scale, false);
+            DrawLandmark(rect, StoryWorldFactory.ClockPlazaPoint, new Color(0.42f, 0.70f, 0.80f), 6f * scale, false);
+            DrawLandmark(rect, StoryWorldFactory.VehiclePoint, new Color(0.35f, 0.91f, 1f), 7f * scale, false);
+
+            mapLabelStyle.fontSize = Mathf.RoundToInt(8f * scale);
+            DrawMapLabel(rect, StoryWorldFactory.WorkshopPoint, "OFICINA", new Vector2(-32f, -15f));
+            DrawMapLabel(rect, StoryWorldFactory.ClockPlazaPoint, "PRAÇA", new Vector2(-23f, 8f));
 
             if (story != null && story.HasObjectiveTarget)
             {
                 var pulse = 0.75f + Mathf.Sin(Time.time * 5f) * 0.25f;
-                DrawLandmark(rect, story.ObjectiveTarget, new Color(1f, 0.78f, 0.18f, pulse), 9f, true);
+                DrawLandmark(rect, story.ObjectiveTarget, new Color(1f, 0.78f, 0.18f, pulse), 10f * scale, true);
             }
 
-            DrawLandmark(rect, player.position, new Color(0.96f, 0.98f, 1f), 8f, true);
+            DrawLandmark(rect, player.position, new Color(0.96f, 0.98f, 1f), 9f * scale, true);
 
             GUI.color = eraTint;
-            GUI.DrawTexture(new Rect(rect.x, rect.y, rect.width, 2f), Texture2D.whiteTexture);
-            GUI.DrawTexture(new Rect(rect.x, rect.y + rect.height - 2f, rect.width, 2f), Texture2D.whiteTexture);
-            GUI.DrawTexture(new Rect(rect.x, rect.y, 2f, rect.height), Texture2D.whiteTexture);
-            GUI.DrawTexture(new Rect(rect.x + rect.width - 2f, rect.y, 2f, rect.height), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(rect.x, rect.y, rect.width, 3f), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(rect.x, rect.y + rect.height - 3f, rect.width, 3f), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(rect.x, rect.y, 3f, rect.height), Texture2D.whiteTexture);
+            GUI.DrawTexture(new Rect(rect.x + rect.width - 3f, rect.y, 3f, rect.height), Texture2D.whiteTexture);
             GUI.color = old;
         }
 
@@ -134,6 +145,12 @@ namespace Pythime
             GUI.color = old;
         }
 
+        private void DrawMapLabel(Rect map, Vector2 worldPosition, string text, Vector2 offset)
+        {
+            var point = WorldToMap(map, worldPosition);
+            GUI.Label(new Rect(point.x + offset.x, point.y + offset.y, 64f, 14f), text, mapLabelStyle);
+        }
+
         private static Vector2 WorldToMap(Rect map, Vector2 world)
         {
             var normalizedX = Mathf.Clamp01((world.x + StoryWorldFactory.MapWidthTiles * 0.5f) / StoryWorldFactory.MapWidthTiles);
@@ -146,7 +163,7 @@ namespace Pythime
         private void DrawLegend(Rect rect, float scale)
         {
             smallStyle.fontSize = Mathf.RoundToInt(9f * scale);
-            GUI.Label(rect, "◆ você     ◆ objetivo     ■ locais importantes", smallStyle);
+            GUI.Label(rect, "◆ você     ◆ objetivo     ■ locais", smallStyle);
         }
 
         private void BuildStyles()
@@ -154,7 +171,7 @@ namespace Pythime
             if (titleStyle != null) return;
 
             panel = new Texture2D(1, 1, TextureFormat.RGBA32, false);
-            panel.SetPixel(0, 0, new Color(0.045f, 0.055f, 0.075f, 0.94f));
+            panel.SetPixel(0, 0, new Color(0.035f, 0.045f, 0.065f, 0.97f));
             panel.Apply(false, true);
 
             mapBackground = new Texture2D(1, 1, TextureFormat.RGBA32, false);
@@ -173,6 +190,13 @@ namespace Pythime
                 alignment = TextAnchor.MiddleRight
             };
             smallStyle.normal.textColor = new Color(0.71f, 0.77f, 0.82f);
+
+            mapLabelStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontStyle = FontStyle.Bold,
+                alignment = TextAnchor.MiddleCenter
+            };
+            mapLabelStyle.normal.textColor = new Color(0.88f, 0.92f, 0.95f);
         }
     }
 }
