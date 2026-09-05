@@ -5,7 +5,7 @@ namespace Pythime
 {
     public sealed class PlayerEyeStyleRuntime : MonoBehaviour
     {
-        private readonly HashSet<int> patchedSprites = new HashSet<int>();
+        private readonly HashSet<Sprite> patchedSprites = new HashSet<Sprite>();
         private SpriteRenderer avatar;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -29,11 +29,10 @@ namespace Pythime
 
             if (avatar == null || avatar.sprite == null || avatar.sprite.texture == null) return;
             var sprite = avatar.sprite;
-            var id = sprite.GetInstanceID();
-            if (patchedSprites.Contains(id)) return;
+            if (patchedSprites.Contains(sprite)) return;
 
             SoftenEyes(sprite.texture);
-            patchedSprites.Add(id);
+            patchedSprites.Add(sprite);
         }
 
         private static void SoftenEyes(Texture2D texture)
