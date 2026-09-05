@@ -7,7 +7,6 @@ namespace Pythime
     public sealed class StoryDirector : MonoBehaviour
     {
         private Transform player;
-        private PlayerController controller;
         private Rigidbody2D playerBody;
         private Vector2 workshopPoint;
         private Vector2 soilPoint;
@@ -34,7 +33,6 @@ namespace Pythime
         public void Initialize(Transform playerTransform, Vector2 workshop, Vector2 soil, Vector2 monolith)
         {
             player = playerTransform;
-            controller = player != null ? player.GetComponent<PlayerController>() : null;
             playerBody = player != null ? player.GetComponent<Rigidbody2D>() : null;
             workshopPoint = workshop;
             soilPoint = soil;
@@ -66,7 +64,6 @@ namespace Pythime
             {
                 if (keyboard != null && (keyboard.spaceKey.wasPressedThisFrame || keyboard.enterKey.wasPressedThisFrame))
                     AdvanceDialogue();
-                return;
             }
 
             var timeline = TimeTravelManager.Instance;
@@ -147,13 +144,13 @@ namespace Pythime
 
         private void BeginDialogue(string[] lines, Action onComplete)
         {
+            if (dialogueOpen) return;
             dialogueLines = lines;
             dialogueIndex = 0;
             dialogueComplete = onComplete;
             dialogueOpen = true;
-            if (controller != null) controller.enabled = false;
-            if (playerBody != null) playerBody.linearVelocity = Vector2.zero;
-            if (TimeTravelManager.Instance != null) TimeTravelManager.Instance.enabled = false;
+            if (playerBody != null && playerBody.linearVelocity.sqrMagnitude < 0.01f)
+                playerBody.linearVelocity = Vector2.zero;
         }
 
         private void AdvanceDialogue()
@@ -164,8 +161,6 @@ namespace Pythime
             dialogueOpen = false;
             dialogueLines = Array.Empty<string>();
             dialogueIndex = 0;
-            if (controller != null) controller.enabled = true;
-            if (TimeTravelManager.Instance != null) TimeTravelManager.Instance.enabled = true;
             var completion = dialogueComplete;
             dialogueComplete = null;
             completion?.Invoke();
@@ -248,7 +243,7 @@ namespace Pythime
             GUI.Box(new Rect(60, y, Screen.width - 120, boxHeight), string.Empty);
             GUI.Label(new Rect(86, y + 18, 180, 28), speaker, dialogueNameStyle);
             GUI.Label(new Rect(86, y + 50, Screen.width - 172, 64), text, dialogueStyle);
-            GUI.Label(new Rect(Screen.width - 260, y + 116, 170, 24), "ESPAÇO / ENTER  continuar", objectiveTitleStyle);
+            GUI.Label(new Rect(Screen.width - 360, y + 116, 270, 24), "WASD move  •  ESPAÇO / ENTER continua", objectiveTitleStyle);
         }
     }
 }
