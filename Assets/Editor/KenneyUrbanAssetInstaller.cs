@@ -13,7 +13,7 @@ namespace Pythime.EditorTools
     public static class KenneyUrbanAssetInstaller
     {
         private const string DownloadUrl = "https://opengameart.org/sites/default/files/kenney_RPGurbanPack.zip";
-        private const string Root = "Assets/ThirdParty/KenneyRPGUrban";
+        private const string Root = "Assets/Resources/PythimeArt/KenneyRPGUrban";
         private const string Marker = Root + "/.installed";
         private static bool installing;
 
@@ -67,8 +67,7 @@ namespace Pythime.EditorTools
                             targetFolder = Root;
 
                         Directory.CreateDirectory(targetFolder);
-                        var targetPath = Path.Combine(targetFolder, fileName);
-                        entry.ExtractToFile(targetPath, true);
+                        entry.ExtractToFile(Path.Combine(targetFolder, fileName), true);
                     }
                 }
 
@@ -78,7 +77,7 @@ namespace Pythime.EditorTools
                 AssetDatabase.Refresh();
                 ConfigureTextures(Root);
                 AssetDatabase.Refresh();
-                Debug.Log("Pythime: Kenney RPG Urban Pack (CC0) instalado em Assets/ThirdParty/KenneyRPGUrban.");
+                Debug.Log("Pythime: pack urbano CC0 instalado. A arte de referência já está disponível no protótipo.");
             }
             catch (Exception exception)
             {
@@ -100,13 +99,23 @@ namespace Pythime.EditorTools
                 var importer = AssetImporter.GetAtPath(assetPath) as TextureImporter;
                 if (importer == null) continue;
 
-                importer.textureType = TextureImporterType.Sprite;
-                importer.spriteImportMode = SpriteImportMode.Single;
-                importer.spritePixelsPerUnit = 16f;
                 importer.filterMode = FilterMode.Point;
                 importer.textureCompression = TextureImporterCompression.Uncompressed;
                 importer.mipmapEnabled = false;
                 importer.alphaIsTransparency = true;
+
+                if (assetPath.EndsWith("/Sample.png", StringComparison.OrdinalIgnoreCase))
+                {
+                    importer.textureType = TextureImporterType.Default;
+                    importer.isReadable = true;
+                }
+                else
+                {
+                    importer.textureType = TextureImporterType.Sprite;
+                    importer.spriteImportMode = SpriteImportMode.Single;
+                    importer.spritePixelsPerUnit = 16f;
+                }
+
                 importer.SaveAndReimport();
             }
         }
