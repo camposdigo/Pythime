@@ -19,5 +19,7 @@
 *.opendb
 *.VC.db
 
+Assets/ThirdParty/KenneyRPGUrban/
+
 .DS_Store
 Thumbs.db
