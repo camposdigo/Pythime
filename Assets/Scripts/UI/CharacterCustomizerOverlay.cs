@@ -5,6 +5,8 @@ namespace Pythime
 {
     public sealed class CharacterCustomizerOverlay : MonoBehaviour
     {
+        private const int WindowId = 203085;
+
         private PlayerVisual visual;
         private PlayerController controller;
         private bool open;
@@ -45,7 +47,7 @@ namespace Pythime
         {
             if (!open || visual == null) return;
             BuildStyles();
-            windowRect = GUI.Window(GetInstanceID(), windowRect, DrawWindow, "PERSONAGEM");
+            windowRect = GUI.Window(WindowId, windowRect, DrawWindow, "PERSONAGEM");
         }
 
         private void DrawWindow(int id)
