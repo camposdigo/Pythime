@@ -1,19 +1,22 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 namespace Pythime
 {
+    [DefaultExecutionOrder(-2000)]
     public sealed class OfficialPlayerSpriteRuntime : MonoBehaviour
     {
         private const string ResourcePath = "Characters/player_marty_sheet";
         private const int Columns = 4;
         private const int Rows = 5;
-        private const float PixelsPerUnit = 28f;
+        private const float PixelsPerUnit = 20f;
         private const float FrameDuration = 0.115f;
 
         private readonly Dictionary<string, Sprite> frames = new Dictionary<string, Sprite>();
         private SpriteRenderer target;
         private PlayerController controller;
+        private Transform player;
         private Vector2 lastPosition;
         private float moveGrace;
         private float animationClock;
@@ -23,17 +26,45 @@ namespace Pythime
 
         public bool UsingOfficialSheet => usingOfficialSheet;
 
-        public void Initialize(SpriteRenderer renderer)
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        private static void Bootstrap()
         {
-            target = renderer;
-            controller = GetComponent<PlayerController>();
-            lastPosition = transform.position;
+            if (GameObject.Find("PythimeOfficialPlayer") != null) return;
+            var root = new GameObject("PythimeOfficialPlayer");
+            root.AddComponent<OfficialPlayerSpriteRuntime>();
+        }
+
+        private IEnumerator Start()
+        {
+            for (var frame = 0; frame < 180; frame++)
+            {
+                var playerObject = GameObject.Find("Player");
+                if (playerObject != null)
+                {
+                    var avatar = playerObject.transform.Find("Avatar");
+                    if (avatar != null)
+                    {
+                        player = playerObject.transform;
+                        target = avatar.GetComponent<SpriteRenderer>();
+                        controller = playerObject.GetComponent<PlayerController>();
+                        break;
+                    }
+                }
+                yield return null;
+            }
+
+            if (player == null || target == null)
+            {
+                Destroy(gameObject);
+                yield break;
+            }
 
             var texture = Resources.Load<Texture2D>(ResourcePath);
-            if (texture == null || texture.width < Columns || texture.height < Rows)
+            if (texture == null || texture.width < Columns || texture.height < Rows || texture.width % Columns != 0 || texture.height % Rows != 0)
             {
-                EnableProceduralFallback();
-                return;
+                Debug.LogWarning("Pythime: player_marty_sheet.png não encontrado ou inválido. Mantendo o visual procedural temporariamente.");
+                Destroy(gameObject);
+                yield break;
             }
 
             texture.filterMode = FilterMode.Point;
@@ -43,18 +74,32 @@ namespace Pythime
 
             if (!usingOfficialSheet)
             {
-                EnableProceduralFallback();
-                return;
+                Destroy(gameObject);
+                yield break;
             }
 
+            var procedural = player.GetComponent<PlayerVisual>();
+            if (procedural != null) procedural.enabled = false;
+
+            var eyePatch = GameObject.Find("PythimePlayerEyeStyle");
+            if (eyePatch != null) eyePatch.SetActive(false);
+
+            var runtime = GameObject.Find("PythimeRuntime");
+            if (runtime != null)
+            {
+                var customizer = runtime.GetComponent<CharacterCustomizerOverlay>();
+                if (customizer != null) customizer.enabled = false;
+            }
+
+            lastPosition = player.position;
             ApplyIdle();
         }
 
         private void Update()
         {
-            if (!usingOfficialSheet || target == null) return;
+            if (!usingOfficialSheet || target == null || player == null) return;
 
-            var current = (Vector2)transform.position;
+            var current = (Vector2)player.position;
             var travelled = current - lastPosition;
             lastPosition = current;
 
@@ -87,7 +132,7 @@ namespace Pythime
                 ApplyIdle();
             }
 
-            target.sortingOrder = 80 - Mathf.RoundToInt(transform.position.y * 3f);
+            target.sortingOrder = 80 - Mathf.RoundToInt(player.position.y * 3f);
         }
 
         private void BuildFrames(Texture2D texture)
@@ -129,15 +174,6 @@ namespace Pythime
         {
             Sprite sprite;
             return frames.TryGetValue($"{row}:{column}", out sprite) ? sprite : null;
-        }
-
-        private void EnableProceduralFallback()
-        {
-            usingOfficialSheet = false;
-            var fallback = GetComponent<PlayerVisual>();
-            if (fallback == null) fallback = gameObject.AddComponent<PlayerVisual>();
-            fallback.Initialize(target);
-            Debug.LogWarning("Pythime: player_marty_sheet.png não encontrado em Assets/Resources/Characters. Usando o visual procedural temporariamente.");
         }
 
         private enum Direction
