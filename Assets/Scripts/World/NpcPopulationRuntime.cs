@@ -12,20 +12,9 @@ namespace Pythime
             new Vector2(29f, 15f), new Vector2(35f, 15f)
         };
 
-        private static readonly string[] Names1956 =
-        {
-            "Mabel", "Arthur", "Rosa", "Walter", "Evelyn", "Otávio", "Nina", "Jorge", "Lídia", "Augusto"
-        };
-
-        private static readonly string[] Names2026 =
-        {
-            "Maya", "Caio", "Nina", "Theo", "Luna", "Ravi", "Bia", "Noah", "Yasmin", "Davi"
-        };
-
-        private static readonly string[] Names2096 =
-        {
-            "Ari-7", "Lio", "Nova", "Soren", "Mika", "Z3N", "Iris", "Kairo", "Vega", "Aya"
-        };
+        private static readonly string[] Names1956 = { "Mabel", "Arthur", "Rosa", "Walter", "Evelyn", "Otávio", "Nina", "Jorge", "Lídia", "Augusto" };
+        private static readonly string[] Names2026 = { "Maya", "Caio", "Nina", "Theo", "Luna", "Ravi", "Bia", "Noah", "Yasmin", "Davi" };
+        private static readonly string[] Names2096 = { "Ari-7", "Lio", "Nova", "Soren", "Mika", "Z3N", "Iris", "Kairo", "Vega", "Aya" };
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Bootstrap()
@@ -37,27 +26,29 @@ namespace Pythime
 
         private IEnumerator Start()
         {
-            for (var i = 0; i < 120; i++)
-            {
-                if (GameObject.Find("Era_1956") != null && GameObject.Find("Era_2026") != null && GameObject.Find("Era_2096") != null)
-                    break;
-                yield return null;
-            }
-
+            for (var i = 0; i < 120 && FindEra(2026) == null; i++) yield return null;
             PopulateEra(1956, Names1956, 7);
             PopulateEra(2026, Names2026, 10);
             PopulateEra(2096, Names2096, 8);
         }
 
+        private static GameObject FindEra(int year)
+        {
+            var runtime = GameObject.Find("PythimeRuntime");
+            if (runtime == null) return null;
+            var child = runtime.transform.Find("Era_" + year);
+            return child != null ? child.gameObject : null;
+        }
+
         private static void PopulateEra(int year, string[] names, int count)
         {
-            var era = GameObject.Find("Era_" + year);
+            var era = FindEra(year);
             if (era == null || era.transform.Find("NPCs") != null) return;
 
             var group = new GameObject("NPCs");
             group.transform.SetParent(era.transform);
-
             count = Mathf.Min(count, SpawnTiles.Length);
+
             for (var i = 0; i < count; i++)
             {
                 var npc = new GameObject("NPC_" + names[i]);
@@ -69,11 +60,10 @@ namespace Pythime
                 shadowObject.transform.localPosition = new Vector3(0f, 0.08f, 0f);
                 var shadow = shadowObject.AddComponent<SpriteRenderer>();
                 shadow.sprite = PixelArtFactory.CreateShadowSprite();
-                shadow.color = new Color(1f, 1f, 1f, 0.72f);
+                shadow.color = new Color(1f, 1f, 1f, 0.70f);
 
                 var visualObject = new GameObject("Visual");
                 visualObject.transform.SetParent(npc.transform);
-                visualObject.transform.localPosition = Vector3.zero;
                 var renderer = visualObject.AddComponent<SpriteRenderer>();
                 renderer.sprite = NpcSpriteFactory.Create(year, i);
 
@@ -112,7 +102,6 @@ namespace Pythime
         private void Update()
         {
             if (rendererTarget == null) return;
-
             rendererTarget.sortingOrder = 72 - Mathf.RoundToInt(transform.position.y * 3f);
 
             if (wait > 0f)
@@ -127,7 +116,6 @@ namespace Pythime
             var next = Vector2.MoveTowards(before, target, speed * Time.deltaTime);
             transform.position = next;
             var delta = next - before;
-
             if (delta.x > 0.002f) rendererTarget.flipX = false;
             else if (delta.x < -0.002f) rendererTarget.flipX = true;
 
@@ -223,11 +211,7 @@ namespace Pythime
                 wrapMode = TextureWrapMode.Clamp,
                 name = "Npc_" + year + "_" + variant
             };
-
-            var pixels = new Color32[width * height];
-            var clear = new Color32(0, 0, 0, 0);
-            for (var i = 0; i < pixels.Length; i++) pixels[i] = clear;
-            texture.SetPixels32(pixels);
+            Clear(texture);
 
             var outline = new Color32(24, 27, 31, 255);
             var skin = Skins[variant % Skins.Length];
@@ -310,28 +294,13 @@ namespace Pythime
         {
             FillEllipse(t, 11, 26, 8, 4, outline);
             FillEllipse(t, 11, 26, 7, 3, hair);
-
             switch (variant % 5)
             {
-                case 0:
-                    FillRect(t, 5, 23, 3, 4, hair);
-                    break;
-                case 1:
-                    FillEllipse(t, 6, 24, 4, 4, hair);
-                    FillEllipse(t, 15, 24, 4, 4, hair);
-                    break;
-                case 2:
-                    FillRect(t, 5, 22, 3, 6, hair);
-                    FillRect(t, 14, 23, 3, 5, hair);
-                    break;
-                case 3:
-                    FillRect(t, 8, 27, 8, 2, hair);
-                    texturePixelSafe(t, 16, 28, hair);
-                    break;
-                default:
-                    FillEllipse(t, 8, 27, 4, 3, hair);
-                    FillEllipse(t, 14, 27, 4, 3, hair);
-                    break;
+                case 0: FillRect(t, 5, 23, 3, 4, hair); break;
+                case 1: FillEllipse(t, 6, 24, 4, 4, hair); FillEllipse(t, 15, 24, 4, 4, hair); break;
+                case 2: FillRect(t, 5, 22, 3, 6, hair); FillRect(t, 14, 23, 3, 5, hair); break;
+                case 3: FillRect(t, 8, 27, 8, 2, hair); t.SetPixel(16, 28, hair); break;
+                default: FillEllipse(t, 8, 27, 4, 3, hair); FillEllipse(t, 14, 27, 4, 3, hair); break;
             }
         }
 
@@ -342,9 +311,6 @@ namespace Pythime
             FillRect(t, 12, 21, 3, 2, outline);
             t.SetPixel(7, 22, white);
             t.SetPixel(12, 22, white);
-            t.SetPixel(9, 21, outline);
-            t.SetPixel(14, 21, outline);
-
             if (variant % 4 == 0)
             {
                 FillRect(t, 6, 21, 10, 1, new Color32(49, 54, 62, 255));
@@ -357,42 +323,35 @@ namespace Pythime
         {
             if (year == 1956 && variant % 3 == 0)
             {
-                var hat = new Color32(91, 68, 51, 255);
                 FillRect(t, 5, 27, 12, 2, outline);
-                FillRect(t, 7, 28, 8, 1, hat);
+                FillRect(t, 7, 28, 8, 1, new Color32(91, 68, 51, 255));
             }
             else if (year == 2026 && variant % 3 == 1)
             {
-                var bag = new Color32(91, 63, 44, 255);
                 FillRect(t, 17, 11, 3, 5, outline);
-                FillRect(t, 18, 12, 2, 3, bag);
+                FillRect(t, 18, 12, 2, 3, new Color32(91, 63, 44, 255));
             }
             else if (year == 2096)
             {
                 var cyan = new Color32(69, 230, 225, 255);
-                if (variant % 2 == 0)
-                {
-                    FillRect(t, 7, 10, 8, 1, cyan);
-                    t.SetPixel(18, 12, cyan);
-                }
-                else
-                {
-                    FillRect(t, 6, 20, 10, 1, cyan);
-                }
+                if (variant % 2 == 0) { FillRect(t, 7, 10, 8, 1, cyan); t.SetPixel(18, 12, cyan); }
+                else FillRect(t, 6, 20, 10, 1, cyan);
             }
         }
 
-        private static void texturePixelSafe(Texture2D t, int x, int y, Color32 color)
+        private static void Clear(Texture2D texture)
         {
-            if (x >= 0 && y >= 0 && x < t.width && y < t.height) t.SetPixel(x, y, color);
+            var pixels = new Color32[texture.width * texture.height];
+            var clear = new Color32(0, 0, 0, 0);
+            for (var i = 0; i < pixels.Length; i++) pixels[i] = clear;
+            texture.SetPixels32(pixels);
         }
 
         private static void FillRect(Texture2D t, int x, int y, int width, int height, Color32 color)
         {
             for (var py = y; py < y + height; py++)
             for (var px = x; px < x + width; px++)
-                if (px >= 0 && py >= 0 && px < t.width && py < t.height)
-                    t.SetPixel(px, py, color);
+                if (px >= 0 && py >= 0 && px < t.width && py < t.height) t.SetPixel(px, py, color);
         }
 
         private static void FillEllipse(Texture2D t, int centerX, int centerY, int radiusX, int radiusY, Color32 color)
@@ -402,8 +361,7 @@ namespace Pythime
             {
                 var nx = (x - centerX) / (float)radiusX;
                 var ny = (y - centerY) / (float)radiusY;
-                if (nx * nx + ny * ny <= 1f && x >= 0 && y >= 0 && x < t.width && y < t.height)
-                    t.SetPixel(x, y, color);
+                if (nx * nx + ny * ny <= 1f && x >= 0 && y >= 0 && x < t.width && y < t.height) t.SetPixel(x, y, color);
             }
         }
     }
