@@ -1,0 +1,1 @@
+namespace Pythime { public sealed class WorkshopInteriorRuntime2 { } }
