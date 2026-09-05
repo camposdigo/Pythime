@@ -47,7 +47,15 @@ namespace Pythime
             var customizer = runtime.AddComponent<CharacterCustomizerOverlay>();
             customizer.Initialize(player);
 
-            runtime.AddComponent<PrototypeHUD>();
+            var beacon = runtime.AddComponent<ObjectiveBeacon>();
+            beacon.Initialize(player.transform, story);
+
+            var presentation = runtime.AddComponent<TimeShiftPresentation>();
+            presentation.Initialize(timeline);
+
+            var hud = runtime.AddComponent<PrototypeHUD>();
+            hud.Initialize(story, player.transform);
+
             runtime.AddComponent<PythonPuzzleConsole>();
         }
 
@@ -61,10 +69,16 @@ namespace Pythime
             var mapRenderer = map.AddComponent<SpriteRenderer>();
             mapRenderer.sprite = StoryWorldFactory.CreateTownMap(year);
             mapRenderer.sortingOrder = -50;
+            mapRenderer.color = year == 1956
+                ? new Color(1f, 0.93f, 0.80f, 1f)
+                : year == 2096
+                    ? new Color(0.78f, 0.90f, 1f, 1f)
+                    : Color.white;
 
             foreach (var rect in StoryWorldFactory.BuildingRects)
                 AddBuildingCollider(root.transform, rect);
 
+            EraLandmarkDecorator.Decorate(root.transform, year);
             BuildTemporalVehicle(root.transform, year);
 
             if (year == 2096)
