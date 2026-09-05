@@ -20,6 +20,8 @@
 *.VC.db
 
 Assets/ThirdParty/KenneyRPGUrban/
+Assets/ThirdParty.meta
+Assets/ThirdParty/KenneyRPGUrban.meta
 
 .DS_Store
 Thumbs.db
