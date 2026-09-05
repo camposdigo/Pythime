@@ -4,6 +4,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
+using System.Threading.Tasks;
 using UnityEditor;
 using UnityEngine;
 
@@ -12,9 +13,25 @@ namespace Pythime.EditorTools
     [InitializeOnLoad]
     public static class KenneyUrbanAssetInstaller
     {
-        private const string DownloadUrl = "https://opengameart.org/sites/default/files/kenney_RPGurbanPack.zip";
-        private const string Root = "Assets/Resources/PythimeArt/KenneyRPGUrban";
-        private const string Marker = Root + "/.installed";
+        private static readonly PackSpec[] Packs =
+        {
+            new PackSpec(
+                "RPG Urban Pack",
+                "https://opengameart.org/sites/default/files/kenney_RPGurbanPack.zip",
+                "Assets/Resources/PythimeArt/KenneyRPGUrban",
+                true),
+            new PackSpec(
+                "Roguelike Modern City",
+                "https://kenney.nl/media/pages/assets/roguelike-modern-city/0ff3dfff2b-1677694743/kenney_roguelike-modern-city.zip",
+                "Assets/Resources/PythimeArt/KenneyModernCity",
+                false),
+            new PackSpec(
+                "Roguelike Indoors",
+                "https://kenney.nl/media/pages/assets/roguelike-indoors/4d5b520b03-1702169567/kenney_roguelike-indoors.zip",
+                "Assets/Resources/PythimeArt/KenneyIndoors",
+                false)
+        };
+
         private static bool installing;
 
         static KenneyUrbanAssetInstaller()
@@ -22,71 +39,98 @@ namespace Pythime.EditorTools
             EditorApplication.delayCall += EnsureInstalled;
         }
 
-        [MenuItem("Pythime/Install CC0 Urban Art")]
+        [MenuItem("Pythime/Install or Update CC0 Art Packs")]
         public static async void EnsureInstalled()
         {
-            if (installing || File.Exists(Marker)) return;
+            if (installing) return;
             installing = true;
 
             try
             {
-                Directory.CreateDirectory(Root);
-                var tempZip = Path.Combine(Path.GetTempPath(), "pythime_kenney_rpg_urban.zip");
-
                 using (var client = new HttpClient())
                 {
-                    client.Timeout = TimeSpan.FromSeconds(30);
-                    var data = await client.GetByteArrayAsync(DownloadUrl);
-                    File.WriteAllBytes(tempZip, data);
-                }
+                    client.Timeout = TimeSpan.FromSeconds(45);
+                    client.DefaultRequestHeaders.UserAgent.ParseAdd("Pythime-Unity/1.0");
 
-                using (var archive = ZipFile.OpenRead(tempZip))
-                {
-                    foreach (var entry in archive.Entries)
+                    foreach (var pack in Packs)
                     {
-                        var normalized = entry.FullName.Replace('\\', '/');
-                        if (!normalized.EndsWith(".png", StringComparison.OrdinalIgnoreCase) &&
-                            !normalized.EndsWith("License.txt", StringComparison.OrdinalIgnoreCase))
-                            continue;
-
-                        if (!normalized.Contains("/Tilemap/") &&
-                            !normalized.Contains("/Tiles/") &&
-                            !normalized.EndsWith("Sample.png", StringComparison.OrdinalIgnoreCase) &&
-                            !normalized.EndsWith("Preview.png", StringComparison.OrdinalIgnoreCase) &&
-                            !normalized.EndsWith("License.txt", StringComparison.OrdinalIgnoreCase))
-                            continue;
-
-                        var fileName = normalized.Split('/').Last();
-                        string targetFolder;
-
-                        if (normalized.Contains("/Tilemap/"))
-                            targetFolder = Root + "/Tilemap";
-                        else if (normalized.Contains("/Tiles/"))
-                            targetFolder = Root + "/Tiles";
-                        else
-                            targetFolder = Root;
-
-                        Directory.CreateDirectory(targetFolder);
-                        entry.ExtractToFile(Path.Combine(targetFolder, fileName), true);
+                        try
+                        {
+                            await EnsurePack(client, pack);
+                        }
+                        catch (Exception exception)
+                        {
+                            Debug.LogWarning("Pythime: falha ao instalar " + pack.Name + ". O restante continuará. " + exception.Message);
+                        }
                     }
                 }
 
-                File.WriteAllText(Marker,
-                    "Kenney RPG Urban Pack\nSource: https://opengameart.org/content/rpg-urban-pack\nLicense: CC0 1.0\n");
+                AssetDatabase.Refresh();
+                foreach (var pack in Packs)
+                {
+                    try
+                    {
+                        ConfigureTextures(pack.Root);
+                    }
+                    catch (Exception exception)
+                    {
+                        Debug.LogWarning("Pythime: falha ao configurar texturas de " + pack.Name + ". " + exception.Message);
+                    }
+                }
+                AssetDatabase.Refresh();
 
-                AssetDatabase.Refresh();
-                ConfigureTextures(Root);
-                AssetDatabase.Refresh();
-                Debug.Log("Pythime: pack urbano CC0 instalado. A arte de referência já está disponível no protótipo.");
-            }
-            catch (Exception exception)
-            {
-                Debug.LogWarning($"Pythime: não foi possível baixar o pack CC0 automaticamente. Use Pythime > Install CC0 Urban Art para tentar novamente. {exception.Message}");
+                Debug.Log("Pythime: rotina de packs CC0 finalizada. O jogo usa qualquer pack que tenha sido instalado com sucesso.");
             }
             finally
             {
                 installing = false;
             }
+        }
+
+        private static async Task EnsurePack(HttpClient client, PackSpec pack)
+        {
+            var marker = Path.Combine(pack.Root, ".installed_v4");
+            if (File.Exists(marker)) return;
+
+            Directory.CreateDirectory(pack.Root);
+            var safeName = pack.Name.Replace(" ", "_").ToLowerInvariant();
+            var tempZip = Path.Combine(Path.GetTempPath(), "pythime_" + safeName + ".zip");
+            var data = await client.GetByteArrayAsync(pack.Url);
+            File.WriteAllBytes(tempZip, data);
+
+            using (var archive = ZipFile.OpenRead(tempZip))
+            {
+                foreach (var entry in archive.Entries)
+                {
+                    var normalized = entry.FullName.Replace('\\', '/');
+                    if (!normalized.EndsWith(".png", StringComparison.OrdinalIgnoreCase) &&
+                        !normalized.EndsWith("License.txt", StringComparison.OrdinalIgnoreCase) &&
+                        !normalized.EndsWith("license.txt", StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    var isTilemap = normalized.IndexOf("/Tilemap/", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                    normalized.IndexOf("/Tilemaps/", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                    normalized.IndexOf("/Spritesheet/", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                    normalized.IndexOf("/Spritesheets/", StringComparison.OrdinalIgnoreCase) >= 0;
+                    var isIndividualTile = pack.ExtractIndividualTiles && normalized.IndexOf("/Tiles/", StringComparison.OrdinalIgnoreCase) >= 0;
+                    var isReference = normalized.EndsWith("Sample.png", StringComparison.OrdinalIgnoreCase) ||
+                                      normalized.EndsWith("Preview.png", StringComparison.OrdinalIgnoreCase);
+                    var isLicense = normalized.EndsWith("License.txt", StringComparison.OrdinalIgnoreCase) ||
+                                    normalized.EndsWith("license.txt", StringComparison.OrdinalIgnoreCase);
+
+                    if (!isTilemap && !isIndividualTile && !isReference && !isLicense) continue;
+
+                    var folder = isIndividualTile ? "Tiles" : isTilemap ? "Tilemap" : "Reference";
+                    var targetFolder = Path.Combine(pack.Root, folder);
+                    Directory.CreateDirectory(targetFolder);
+                    var fileName = normalized.Split('/').Last();
+                    if (string.IsNullOrWhiteSpace(fileName)) continue;
+                    entry.ExtractToFile(Path.Combine(targetFolder, fileName), true);
+                }
+            }
+
+            File.WriteAllText(marker,
+                pack.Name + "\nSource: " + pack.Url + "\nLicense: Creative Commons CC0 1.0\n");
         }
 
         private static void ConfigureTextures(string directory)
@@ -104,19 +148,35 @@ namespace Pythime.EditorTools
                 importer.mipmapEnabled = false;
                 importer.alphaIsTransparency = true;
 
-                if (assetPath.EndsWith("/Sample.png", StringComparison.OrdinalIgnoreCase))
-                {
-                    importer.textureType = TextureImporterType.Default;
-                    importer.isReadable = true;
-                }
-                else
+                if (assetPath.IndexOf("/Tiles/", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
                     importer.textureType = TextureImporterType.Sprite;
                     importer.spriteImportMode = SpriteImportMode.Single;
                     importer.spritePixelsPerUnit = 16f;
                 }
+                else
+                {
+                    importer.textureType = TextureImporterType.Default;
+                    importer.isReadable = true;
+                }
 
                 importer.SaveAndReimport();
+            }
+        }
+
+        private readonly struct PackSpec
+        {
+            public readonly string Name;
+            public readonly string Url;
+            public readonly string Root;
+            public readonly bool ExtractIndividualTiles;
+
+            public PackSpec(string name, string url, string root, bool extractIndividualTiles)
+            {
+                Name = name;
+                Url = url;
+                Root = root;
+                ExtractIndividualTiles = extractIndividualTiles;
             }
         }
     }
